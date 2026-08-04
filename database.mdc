@@ -46,6 +46,21 @@ never inline in UI or route handlers.
   (RPC / stored procedures)** for operations that must be race-free.
 - **Derive types from generated DB types** for rows, inserts, and updates.
 
+## Query efficiency
+
+Every query costs a round-trip, pool capacity, and (offline-first apps) sync
+bandwidth. Queries that serve no purpose are bugs:
+
+- **Every query must have a consumer.** Never fetch "just in case", and delete
+  dead queries in the same PR as the refactor that orphaned them.
+- **No N+1**: batch with joins or `IN` lists instead of per-row round-trips.
+- **Don't refetch unchanged data** — go through the cache layer declared in
+  `PROJECT.md` and invalidate precisely, never blanket-refetch on every render.
+- **Combine writes that must succeed together** into one statement or RPC
+  instead of sequential client-side calls.
+- **Push aggregation to the database** (views, `GROUP BY`) — never pull raw
+  rows to aggregate in application code.
+
 ## Migrations
 
 - **Location**: a single migrations directory; one concern per migration.
@@ -92,6 +107,12 @@ Never collapse these into one PR unless downtime is acceptable and authorized.
 
 When the DB supports it (e.g. Supabase/Postgres), **RLS is mandatory**:
 
+- **RLS is non-negotiable and admits no exceptions.** Policies are always
+  active and written defensively — default deny, least privilege — in every
+  environment including local and staging. No "temporary" bypass, no table
+  shipped "we'll add policies later", no weakening a policy to unblock a
+  feature: if RLS blocks a legitimate operation, fix the policy or use the
+  documented privileged client, never loosen security.
 - **Enable RLS in the same migration that creates the table.** Never "for now".
 - **Default deny**: a table with no policy is inaccessible. Define at least one.
 - **Descriptive policy names**: `{table}_{action}_{scope}` (e.g.
