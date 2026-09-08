@@ -1,0 +1,112 @@
+# Pre-production gate template (core/testing.mdc "Before production").
+# Runs on release branches / release candidates against a production-like
+# environment. Copy to .github/workflows/pre-production.yml and fill in.
+
+name: Pre-production gate
+
+on:
+  push:
+    branches: ["release/**"]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: Pre-prod base URL
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  TARGET_URL: ${{ inputs.target_url || 'https://staging.example.com' }}
+
+jobs:
+  full-e2e:
+    name: Full E2E across browser and device matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, mobile-chrome, mobile-safari]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps
+      - run: pnpm test:e2e --project=${{ matrix.project }}
+        env: { BASE_URL: "${{ env.TARGET_URL }}" }
+
+  load:
+    name: Load, stress, spike, soak
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - run: k6 run tests/load/baseline.js --env BASE_URL=${{ env.TARGET_URL }}
+      - run: k6 run tests/load/stress.js --env BASE_URL=${{ env.TARGET_URL }}
+      - run: k6 run tests/load/spike.js --env BASE_URL=${{ env.TARGET_URL }}
+      - run: k6 run tests/load/soak.js --env BASE_URL=${{ env.TARGET_URL }} --duration 30m
+
+  security:
+    name: DAST, auth, authorization, injection suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: DAST baseline scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with: { target: "${{ env.TARGET_URL }}", fail_action: true }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:security
+        env: { BASE_URL: "${{ env.TARGET_URL }}" }
+
+  resilience:
+    name: Failure injection, timeouts, retries, failover
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:resilience
+        env: { BASE_URL: "${{ env.TARGET_URL }}" }
+
+  data-and-config:
+    name: Backup restore drill, rollback, upgrade, configuration, i18n matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:restore-drill
+      - run: pnpm test:rollback
+      - run: pnpm test:upgrade --from="$(git describe --tags --abbrev=0)"
+      - run: pnpm test:config
+      - run: pnpm test:i18n-matrix
+
+  business:
+    name: Acceptance and critical business flows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:acceptance
+        env: { BASE_URL: "${{ env.TARGET_URL }}" }
+
+  gate:
+    name: Pre-production gate green
+    runs-on: ubuntu-latest
+    needs: [full-e2e, load, security, resilience, data-and-config, business]
+    if: always()
+    steps:
+      - run: |
+          echo '${{ toJSON(needs) }}' | grep -Eq '"result": "(failure|cancelled)"' && exit 1 || echo "ready for exploratory testing and release"

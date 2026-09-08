@@ -32,6 +32,11 @@ A 290-line file with a single 250-line function is just as bad as a 500-line fil
 
 List project-specific exempt files in `PROJECT.md` if needed.
 
+**Per-language overrides.** A language rule in `languages/` may override a
+limit with a documented reason (e.g. Rust modules holding one type's `impl`
+blocks). `PROJECT.md` may further override for the project. The override never
+exceeds 2x the default; the function limit is never overridden.
+
 ## Protocol When Encountering a Large File
 
 When modifying a file over 300 lines (or a function over 50 lines):
@@ -69,7 +74,8 @@ barrel for the public API. Remove dead code in the process.
 
 ## Naming Conventions
 
-Adapt to the language in use; the defaults below cover JS/TS projects.
+Defaults for JS/TS projects; other languages follow their rule in `languages/`
+(which takes precedence for that language).
 
 | Type | Convention | Example |
 |---|---|---|
@@ -97,18 +103,24 @@ Order, separated by blank lines:
 4. Local relative imports
 5. Type-only imports
 
-## TypeScript Rules
+## Type Safety (any language)
 
-(Apply when the project uses TypeScript.)
-
-- **Strict mode mandatory**: `"strict": true`.
-- **No `any`.** Use `unknown` when genuinely unknown, then narrow with type guards.
-- **No `as` casts** except in rare cases, each documented inline with why.
-- **Generated types are generated**: never hand-edit codegen output; derive types
-  from it rather than re-declaring them.
+- **Strictest compiler / type-checker settings on** (`strict: true`, mypy
+  strict, `-D warnings`, `-Werror` equivalents). Warnings are errors in CI.
+- **No escape hatches** (`any`, `Any`, `interface{}` without constraint,
+  `unsafe`, `!!`, force unwrap, `as` casts) except where documented inline with
+  the reason, or as the language rule allows.
+- **Generated types are generated**: never hand-edit codegen output; derive
+  types from it rather than re-declaring them.
 - **Validate at every boundary**: all external inputs (API routes, functions,
-  forms) are validated with a schema.
+  forms, jobs, webhooks) are validated with a schema, and types are inferred
+  from that schema.
 - **Never trust client data**: always re-validate on the server.
+- **Make illegal states unrepresentable**: discriminated unions, sealed
+  classes, enums with exhaustive matching, newtypes for ids and units.
+
+Language mechanics (TypeScript, Python, Go, Rust, Swift, Kotlin, PHP, Shell,
+SQL) live in `languages/`; load the ones `PROJECT.md` activates.
 
 ## Dead Code
 
@@ -128,3 +140,13 @@ When editing any file:
 - Find unused dependencies (e.g. `npx depcheck`).
 - Find unused locals/params (e.g. `tsc --noUnusedLocals --noUnusedParameters`).
 - Resolve or link any `TODO`/`FIXME` lacking an issue.
+
+## Checklist when touching any code
+- [ ] File under 300 lines, function under 50, nesting under 3, params under 4 (or documented exemption)
+- [ ] One responsibility per file; UI, data fetching, and business logic separated
+- [ ] Naming follows the table above or the language rule
+- [ ] Imports ordered; no barrel bypass; no circular dependency
+- [ ] Strictest type settings; no escape hatch without an inline reason
+- [ ] External input validated with a schema at the boundary
+- [ ] No commented-out code, unused symbols, debug logging, unlinked TODO
+- [ ] Generated files untouched; types derived from them

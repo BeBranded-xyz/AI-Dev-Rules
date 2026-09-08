@@ -32,6 +32,8 @@ Use the **minimum-privilege client** for each context. A typical setup has three
 - Read connection details from env, never hardcode. Application queries go
   through the connection pooler; migrations use the direct connection.
 
+How the UI consumes these queries (one round trip per screen, optimistic mutations, caching) is in `data-fetching.mdc`.
+
 ## Query patterns
 
 Keep all queries in dedicated data-access files (`*.queries.ts` / `*.repo.ts`),
@@ -150,6 +152,24 @@ CREATE INDEX idx_my_table_some_fk ON my_table (some_fk_id);
 - Watch the connection pool; alert on sustained high usage.
 - Verify backup retention and point-in-time recovery match the plan before
   relying on them.
+
+## Testing
+
+Database changes are maximal-testing areas (`testing.mdc`, row "DB schema /
+migration"). Tools per platform: pgTAP, testcontainers, the project's harness.
+- **Migration chain**: reset, up, down, up on a clean DB; up on a seeded DB;
+  every migration runs twice without error (idempotency).
+- **RLS**: every policy tested as anonymous, owner, and another user, for
+  select, insert, update, delete. A table without a policy test fails CI.
+- **Constraints**: NOT NULL, CHECK, UNIQUE, FK ON DELETE behavior asserted.
+- **Functions and triggers**: unit tests per function including error paths
+  and `SECURITY DEFINER` boundaries; `updated_at` trigger asserted.
+- **Queries**: each data-access function tested against the real local DB
+  (never a mocked client), including empty result, pagination boundaries,
+  and concurrent writes (`SELECT ... FOR UPDATE`, unique violations).
+- **Performance**: `EXPLAIN` in a test for hot queries asserts the intended
+  index is used; a seeded volume test for tables expected to grow.
+- **Backup and restore drill** at the pre-production gate.
 
 ## Checklist when touching DB code
 - [ ] Correct-privilege client for the context; admin use documented

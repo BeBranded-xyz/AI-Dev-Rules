@@ -67,6 +67,25 @@ by · auth · status. Every new function is added in the same PR. To remove one,
 mark it `DEAD — Remove by YYYY-MM-DD`, verify no callers, then delete. Review
 monthly; the "Called by" column must stay accurate.
 
+## Native SDKs first
+
+- **Always use the provider's official, first-party SDK** for the project's
+  language (Stripe, Supabase, Anthropic, Cloudflare, Google, Vercel, Webflow,
+  Sentry, ...). Never hand-roll HTTP calls against an API that ships an
+  official SDK, and never add a community wrapper on top of one.
+- **Raw HTTP only when no official SDK exists** for the language, and then
+  behind the same typed wrapper module, with the endpoint list documented in
+  the wrapper's README and a note in `PROJECT.md` section 14.
+- **On mobile, prefer the provider's native platform SDK** (Swift / Kotlin)
+  over a JavaScript bridge when both exist; the bridge is the exception and
+  needs a documented reason.
+- **Use the platform's native primitives** (the framework's fetch and cache,
+  the database's official client, the runtime's crypto) instead of
+  third-party re-implementations.
+- **Pin the SDK version, read its changelog before upgrading**, and verify the
+  installed version's API before writing code against it
+  (`dependencies.mdc`).
+
 ## Third-party API usage
 
 - **All calls go through one typed wrapper module per service.** Never scatter raw
@@ -128,6 +147,29 @@ it, the sync must never corrupt either side.
 - Keep secrets in a local env file that is never committed.
 - Deploy via CI on merge to the production branch; deploy only what changed; fail
   the pipeline on any deploy error.
+
+## Testing
+
+Integrations are maximal-testing areas (`testing.mdc`, rows "API route /
+server action / function", "External integration / webhook", "Background job").
+- **Wrapper unit tests** with recorded provider fixtures (refreshed on a
+  schedule), covering success, each mapped error code, pagination, rate
+  limit (429 then success), timeout, malformed response.
+- **Function API tests**: happy, validation, unauthenticated, forbidden, not
+  found, conflict, upstream failure (502), and the error envelope on a forced
+  500 (no stack trace, no internal ids).
+- **Contract tests**: request and response validated against the schema and
+  the README's documented codes; provider payloads validated against the
+  provider's published schema.
+- **Webhooks**: valid signature, invalid signature, replayed event, out-of-order
+  events, duplicate delivery (idempotent), cursor persisted and resumed.
+- **Sync**: field ownership matrix enforced (a write in the wrong direction
+  fails a test); monotonic counters and statuses never decrease; run twice
+  yields the same state; audit log rows asserted; upstream deletion path.
+- **Resilience**: retry with fake clock, backoff exhaustion, circuit breaker,
+  best-effort step failure leaves the primary action successful.
+- **Fuzzing** of every inbound boundary; **load test** of the function at
+  the provider's rate limit; **E2E** of the user-visible journey.
 
 ## Checklist when touching an integration / function
 - [ ] Entry → handler → queries structure; files <300, functions <50 lines

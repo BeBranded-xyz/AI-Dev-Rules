@@ -1,10 +1,6 @@
 ---
-description: Git workflow, commits, pull requests, and documentation discipline. Project-agnostic. Useful when committing or opening PRs.
-globs:
-  - .github/**
-  - docs/**
-  - CHANGELOG.md
-  - README.md
+description: Git workflow, commits, pull requests, code review, and documentation discipline. Project-agnostic. Always applies.
+alwaysApply: true
 ---
 
 # Git Workflow & Documentation
@@ -45,7 +41,8 @@ docs(integrations): document sync safety rules
 ## Pull Requests
 
 **Before opening a PR**:
-- Tests pass locally; type checks and lint pass.
+- The project's check command passes locally (typecheck, lint, unit and
+  integration tests); the PR-gate suites in `testing.mdc` are expected green.
 - Documentation updated for user-facing or dev-facing changes (mandatory).
 - Self-review done; no commented-out code, debug logging, or unused imports.
 - No file exceeds 300 lines and no function exceeds 50 lines (excluding
@@ -73,7 +70,7 @@ boxes left unjustified. Adapt the doc targets to the project's actual layout.
 ```markdown
 ## Documentation
 - [ ] Feature docs created/updated: [list files]
-- [ ] CHANGELOG.md updated (if user-facing change)
+- [ ] Commit messages are release-note quality (CHANGELOG is generated)
 - [ ] README.md updated (if structure/config/env changed)
 - [ ] Migration changelog updated (if a DB migration is included)
 - [ ] Function/endpoint docs + registry updated (if added/changed/removed)
@@ -89,11 +86,12 @@ updates, or it is incomplete.
 
 | Change | Required documentation |
 |---|---|
-| New feature | Feature doc + feature index + CHANGELOG entry |
-| Feature modification/removal | Update/remove doc, update index, CHANGELOG entry |
+| New feature | Feature doc + feature index (CHANGELOG generated from commits) |
+| Feature modification/removal | Update/remove doc, update index |
 | New API route / function | Doc or README in the unit + registry entry |
 | New environment variable | Add to `.env.example` + deployment docs |
 | DB schema change | Migration changelog entry |
+| New test category activated / changed tooling | `TEST_PLAN.md` updated |
 | Config / deployment change | Update the relevant deployment doc |
 | New dependency | Update README prerequisites; justify in the PR |
 | UI change | Update the feature doc with the new flow + screenshot |
@@ -111,16 +109,10 @@ prerequisites; getting started (copy-paste ready); project structure (matching
 reality); environment variables table; deployment; key architecture decisions.
 
 ### Changelog
-Maintain a `CHANGELOG.md`:
-
-```markdown
-## [YYYY-MM-DD] — Short description
-- **Type**: feature | fix | improvement | breaking
-- **Summary**: What changed from the user's perspective.
-- **Related PR**: #123
-```
-
-Every PR with user-facing changes adds an entry.
+`CHANGELOG.md` is **generated from conventional commits** by the release tool
+declared in `PROJECT.md` (see `releases.mdc`). Never hand-edit it. The commit
+message is therefore the changelog entry: write the subject for the reader of
+the changelog, and use the body to explain the user-visible effect.
 
 ## Code Review
 
@@ -155,4 +147,14 @@ changes locally.
 4. You may skip the size guideline if strictly necessary, but never skip the
    documentation checklist or tests.
 5. Merge back into the integration branch if one exists.
-6. Add a `CHANGELOG.md` entry tagged `fix` noting `[HOTFIX]`.
+6. Use a `fix(...)` commit whose body notes `[HOTFIX]` so the generated changelog reflects it.
+
+## Checklist before opening or approving a PR
+- [ ] Branch named per convention; rebased on the base branch; no force-push to shared branches
+- [ ] Conventional commits, imperative, release-note quality; refactors separate from features
+- [ ] Check command green locally; PR-gate suites expected green in CI
+- [ ] 1 PR = 1 feature or fix, under ~400 changed lines or justified
+- [ ] PR template filled: tests added, verification run, documentation checklist, risk and rollback
+- [ ] Screenshots for UI changes (desktop and mobile)
+- [ ] Docs, `.env.example`, registries, `PROJECT.md`, `TEST_PLAN.md` updated as needed
+- [ ] Reviewer blockers (size, docs, dead code, secrets, authz, applied migrations) all clear

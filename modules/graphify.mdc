@@ -1,6 +1,8 @@
 ---
 description: graphify knowledge graph context
-alwaysApply: true
+alwaysApply: false
+globs:
+  - "graphify-out/**"
 ---
 
 Apply this rule only if the project uses graphify (see the "Active rule modules"

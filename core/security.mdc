@@ -68,6 +68,23 @@ personal live in `PROJECT.md`.
 - **Never log** passwords, tokens, or full session objects. Scrub before sending
   anywhere.
 
+## Security testing
+
+Security is tested, not assumed (`testing.mdc`, "Security testing is part of
+testing"). Every project runs at the stated gates:
+- **Commit**: secret scanning (gitleaks or equivalent), dependency audit.
+- **PR**: SAST (CodeQL, semgrep, or the language tool), license scan,
+  container and IaC scans, authorization suite (every role against every
+  resource, IDOR, escalation), input fuzzing of changed boundaries, security
+  headers test, upload validation tests.
+- **Pre-production**: DAST (ZAP baseline or equivalent) against the deployed
+  candidate, authentication suite, injection suite (SQL, NoSQL, command, XSS,
+  SSRF, path traversal, template), webhook signature suite, rate-limit tests.
+- **Before a major launch and yearly**: human penetration test; findings
+  become regression tests.
+- Any high or critical finding blocks the gate. Suppressions require a linked
+  issue and an expiry date.
+
 ## Privacy / data protection
 
 - **Data minimization**: collect only what is necessary.
@@ -77,3 +94,14 @@ personal live in `PROJECT.md`.
   `PROJECT.md`.
 - **No raw PII in error trackers or logs** — see `observability.mdc`.
 - **Marketing email** must include an unsubscribe path.
+
+## Checklist when touching security-relevant code
+- [ ] No secret in code, config, logs, or client bundles; `.env.example` updated
+- [ ] Authorization enforced at the data layer (RLS or equivalent), default deny
+- [ ] Privileged client server-only, each use documented
+- [ ] Every external input validated server-side with a schema; no string-built SQL or shell
+- [ ] Untrusted HTML sanitized; uploads validated and served via signed URLs
+- [ ] Inbound webhooks signature-verified; service-to-service calls use signed short-lived tokens
+- [ ] Sessions in HttpOnly cookies; abuse-prone endpoints rate-limited
+- [ ] No PII in logs or the error tracker; data minimization respected
+- [ ] Security suites (authz, injection, fuzz, SAST, dependency scan) cover the change

@@ -25,6 +25,8 @@ Last updated: {{YYYY-MM-DD}}
 - **Primary runtime**: {{e.g. Next.js app (App Router) + serverless functions}}
 - **Entry points**: {{e.g. web app at /, marketing site, mobile, CLI, cron jobs}}
 - **Local dev command(s)**: {{e.g. `pnpm dev`, `supabase start`}}
+- **Check command** (format + lint + typecheck + unit + integration; must be
+  green before any commit): {{`pnpm check`}}
 - **Build / start**: {{e.g. `pnpm build` / `pnpm start`}}
 - **Deployment target**: {{e.g. Vercel / Webflow Cloud / Fly.io / self-hosted}}
 - **What triggers a deploy**: {{e.g. push to `main` auto-deploys}}
@@ -43,6 +45,10 @@ Last updated: {{YYYY-MM-DD}}
 | Serverless / backend logic | {{Supabase Edge Functions / API routes}} | |
 | Email | {{Brevo / Resend / none}} | |
 | Monitoring / errors | {{Sentry / none}} | |
+| Background jobs | {{Vercel cron / Cloudflare cron / BullMQ / Inngest / none}} | |
+| Feature flags | {{PostHog / Flagship / env-based / none}} | |
+| Release tooling | {{release-please / changesets / semantic-release}} | |
+| LLM provider (if the product calls LLMs) | {{Anthropic / none}} | {{data retention setting, region}} |
 | Other | {{...}} | |
 
 ## 4. Languages & conventions
@@ -53,6 +59,9 @@ Last updated: {{YYYY-MM-DD}}
 - **Internal docs**: {{French accepted}} — **Technical docs / READMEs**: {{English}}
 - **Tone**: {{technical and factual}}
 - **Emojis in code / commits / technical docs**: {{not allowed}}
+- **Size limit overrides** (see `code-standards.mdc`; never above 2x, function
+  limit never overridden): {{none}}
+- **Documented size-limit exemptions** (file paths): {{generated types, ...}}
 
 ## 5. Environments & domains
 
@@ -101,22 +110,64 @@ Keep this in sync with the real structure — update in the same PR as a move.}}
 | {{Region}} | {{e.g. eu-west (GDPR)}} |
 | {{External base / account IDs}} | {{...}} |
 
-## 9. Active rule modules
+## 9. Active rules
 
-Tick the modules that apply so contributors (and AI) know which `.mdc` rules are
-in force. A rule for a tech you don't use can be ignored.
+Core rules always apply (`core/`): project identity, AI workflow, code
+standards, security, error handling, testing, dependencies, git workflow.
+Tick everything else that applies so contributors and AI load the right rules.
+A rule for a tech you don't use is ignored.
 
+**Languages** (`languages/`)
+- [ ] `typescript`
+- [ ] `python`
+- [ ] `go`
+- [ ] `rust`
+- [ ] `php` (incl. WordPress)
+- [ ] `swift` (iOS / macOS)
+- [ ] `kotlin-android` (native Android)
+- [ ] `react-native` (Expo)
+- [ ] `sql`
+- [ ] `shell`
+
+**Platforms** (`platforms/`)
+- [ ] `nextjs`
+- [ ] `supabase`
+- [ ] `cloudflare-workers`
+- [ ] `webflow`
+- [ ] `vercel`
+
+**Modules** (`modules/`)
 - [ ] `database` — relational DB, migrations, RLS
 - [ ] `auth` — authentication & session management
 - [ ] `integrations` — external services, webhooks, sync, serverless functions
+- [ ] `api-design` — REST/RPC conventions, error envelope, versioning, OpenAPI
+- [ ] `frontend` — components, accessibility, Core Web Vitals, design tokens
+- [ ] `data-fetching` — fastest reads, optimistic UI on every mutation, one clean data layer
+- [ ] `i18n` — locales, dates/times, currencies, RTL
+- [ ] `performance` — budgets, caching, load testing
+- [ ] `background-jobs` — crons, queues, workers
 - [ ] `observability` — error tracking, tracing, structured logging
+- [ ] `infra` — CI/CD, Docker, IaC, environments
+- [ ] `releases` — versioning, changelog, flags, progressive delivery
+- [ ] `ai-features` — the product calls LLMs
+- [ ] `maintenance` — monthly ritual, debt register (recommended for every project past MVP)
 - [ ] `graphify` — knowledge-graph tooling (`graphify-out/`)
+
+**Testing**: maximal by default (`core/testing.mdc`). Status per category is
+tracked in `TEST_PLAN.md`; every category is required unless justified there.
 
 ## 10. Reference documents
 
 | Doc | Purpose |
 |---|---|
-| {{docs/architecture/decisions.md}} | {{Product/architecture decisions}} |
+| `TEST_PLAN.md` | Status, tooling, command, and gate for every test category |
+| `BACKLOG.md` | Everything still to do; nothing lives only in a chat or a head |
+| `docs/FUNCTIONS_REGISTRY.md` | Every function, route, webhook, job |
+| `docs/MIGRATIONS_CHANGELOG.md` | Human-readable migration history |
+| `docs/FEATURE_FLAGS.md` | Flags with removal dates |
+| `docs/DEBT.md` | Deliberate shortcuts with deadlines |
+| `docs/RUNBOOK.md` | Alerts, procedures, kill switches |
+| `docs/adr/` | Architecture decision records |
 | {{docs/<schema>.md}} | {{Data model}} |
 | {{...}} | {{...}} |
 
@@ -125,7 +176,25 @@ in force. A rule for a tech you don't use can be ignored.
 - {{Why this DB / auth / deployment choice was made — 1-2 lines each.}}
 - {{...}}
 
-## 12. External systems — do not assume undocumented behavior
+## 12. Budgets and thresholds
+
+| Budget | Value |
+|---|---|
+| p95 latency, API reads / writes | {{200 ms / 500 ms}} |
+| Page weight / JS bundle (initial) | {{< 1 MB / < 200 kB gz}} |
+| Core Web Vitals | LCP < 2.5 s, INP < 200 ms, CLS < 0.1 |
+| DB query p95 | {{50 ms}} |
+| Job duration max | {{5 min}} |
+| Error rate alert / canary rollback | {{1% over 5 min}} |
+| Coverage / mutation floors | see `TEST_PLAN.md` |
+
+## 13. Secrets and access (dates only, never values)
+
+| Secret | Where it lives | Last rotated | Rotation cadence |
+|---|---|---|---|
+| {{DATABASE_URL}} | {{platform secret store}} | {{YYYY-MM-DD}} | {{6 months}} |
+
+## 14. External systems — do not assume undocumented behavior
 
 Rely on official docs only for these; do not extrapolate from other projects:
 

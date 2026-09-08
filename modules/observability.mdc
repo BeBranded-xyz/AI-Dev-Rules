@@ -109,9 +109,35 @@ return Sentry.startSpan({ op: "http.client", name: `GET ${endpoint}` }, async (s
 - Set `RELEASE` to the commit SHA in CI for every deploy; upload source maps during
   the build; tag releases with the environment.
 
+## Testing
+
+- **PII scrubbing** (`beforeSend`) has unit tests with emails, phone numbers,
+  tokens, and names in messages, contexts, and stack traces.
+- **Capture is asserted**: integration tests for each mandatory capture point
+  use a test transport and assert the event, tags, and absence of PII.
+- **Spans**: a test per instrumented operation asserts `op`, name, and
+  attributes; missing spans on outbound calls fail.
+- **Log level discipline**: tests assert 4xx logs at `warn` and 5xx at `error`,
+  with request id and entity ids present.
+- **Alert rules** are versioned (as code or exported config) and a synthetic
+  failure at the pre-production gate proves each alert fires and routes.
+- **Health and synthetic checks** are tested against a broken dependency to
+  prove they go red.
+
 ## Alerts
 
 Configure alerts for: any `fatal`; elevated error rate on functions (short
 window); sync failures persisting beyond a threshold; and any occurrence of
 high-severity events (e.g. webhook signature failures). Keep routing/escalation in
 the deployment docs.
+
+## Checklist when touching observability code
+- [ ] SDK initialized per runtime; DSNs and sample rates read from env
+- [ ] Every meaningful catch captures with `feature` and `action` tags and ids only
+- [ ] Function entry points: init, top-level try/catch, request span
+- [ ] Spans on outbound calls, DB queries, jobs, with the project's `op` vocabulary
+- [ ] Logs structured, levelled correctly, with request and entity ids, no PII
+- [ ] `beforeSend` scrubbing in one tested module
+- [ ] `RELEASE` set in CI; source maps uploaded
+- [ ] Alerts exist for fatal, error-rate, sync failures, and high-severity events
+- [ ] Tests assert capture, span attributes, scrubbing, and alert routing
