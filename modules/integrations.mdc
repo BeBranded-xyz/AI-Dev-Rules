@@ -4,6 +4,7 @@ globs:
   - "**/functions/**"
   - "**/webhooks/**"
   - "**/sync/**"
+alwaysApply: false
 ---
 
 # Integrations, Functions & Sync

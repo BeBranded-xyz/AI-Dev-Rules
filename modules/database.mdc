@@ -5,6 +5,7 @@ globs:
   - "**/*.queries.ts"
   - "**/*.repo.ts"
   - "supabase/**"
+alwaysApply: false
 ---
 
 # Database

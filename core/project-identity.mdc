@@ -57,3 +57,11 @@ invariants, the budgets, and which rules are active.
   dates.
 - Everything is written and maintained in English: code, identifiers,
   comments, commits, rules, and technical documentation.
+
+## Checklist when updating project identity
+
+- [ ] Stack, commands, structure, and public identifiers match the project
+- [ ] Active languages, platforms, and modules reflect actual requirements
+- [ ] Project-specific facts and exceptions are documented in `PROJECT.md`
+- [ ] Companion documents and referenced rule paths exist and are current
+- [ ] No secrets included; changes delivered with the implementation

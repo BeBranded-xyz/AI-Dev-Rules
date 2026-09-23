@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook (matcher: Bash). Blocks `git commit` unless the project's
 # check command passes. Exit 2 = block the tool call and feed stderr to the
-# agent. Any other failure of this script itself is non-blocking (exit 0) so a
-# broken hook never silently stops all work; it prints a warning instead.
+# agent. Invalid hook input and missing verification configuration block with
+# an actionable error. Non-commit commands with valid input remain unaffected.
 #
 # The check command is resolved, in order, from:
 #   1. $CHECK_COMMAND
@@ -16,9 +16,18 @@
 set -uo pipefail
 
 input="$(cat)"
-command="$(printf '%s' "$input" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("tool_input",{}).get("command",""))' 2>/dev/null || true)"
+if ! command="$(printf '%s' "$input" | python3 -c '
+import json, sys
+value = json.load(sys.stdin)["tool_input"]["command"]
+if not isinstance(value, str) or not value.strip():
+    sys.exit(1)
+print(value)
+' 2>/dev/null)"; then
+  echo "Blocked: cannot parse hook input. Check Python 3 and the Bash hook payload." >&2
+  exit 2
+fi
 
-# Only act on real commits (not --amend of message, not log/diff/status).
+# Check recognized git commit commands, including --amend; this is not a shell sandbox.
 if ! printf '%s' "$command" | grep -Eq '(^|[;&|[:space:]])git[[:space:]]+(-C[[:space:]]+[^[:space:]]+[[:space:]]+)?commit([[:space:]]|$)'; then
   exit 0
 fi
@@ -29,7 +38,7 @@ if printf '%s' "$command" | grep -Eq -- '--no-verify|-n([[:space:]]|$)'; then
 fi
 
 root="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-cd "$root" || exit 0
+cd "$root" || { echo "Blocked: cannot access project directory for verification." >&2; exit 2; }
 
 resolve_check() {
   if [[ -n "${CHECK_COMMAND:-}" ]]; then echo "$CHECK_COMMAND"; return; fi
@@ -49,16 +58,19 @@ resolve_check() {
 }
 
 check="$(resolve_check)"
-if [[ -z "$check" ]]; then
-  echo "Warning: no check command found (set CHECK_COMMAND or .claude/check-command). Commit allowed but unverified." >&2
-  exit 0
+if [[ ! "$check" =~ [^[:space:]] ]]; then
+  echo "Blocked: no check command configured. Set CHECK_COMMAND or put the project's verification command in .claude/check-command, then retry." >&2
+  exit 2
 fi
 
+umask 077
+log_file="$(mktemp "${TMPDIR:-/tmp}/claude-check.XXXXXX")" || { echo "Blocked: cannot create verification log." >&2; exit 2; }
+trap 'rm -f -- "$log_file"' EXIT
 echo "Running check before commit: $check" >&2
-if bash -c "$check" >/tmp/claude-check.log 2>&1; then
+if bash -c "$check" >"$log_file" 2>&1; then
   exit 0
 fi
 
 echo "Blocked: check command failed ($check). Fix the failures before committing. Last 60 lines:" >&2
-tail -n 60 /tmp/claude-check.log >&2
+tail -n 60 "$log_file" >&2
 exit 2

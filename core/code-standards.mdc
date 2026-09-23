@@ -72,6 +72,60 @@ barrel for the public API. Remove dead code in the process.
 > custom hooks for queries) are valid when the project uses that framework —
 > see `PROJECT.md` for the actual stack.
 
+## Configuration
+
+- Read environment variables through a single typed, validated configuration
+  boundary per runtime. Application modules receive validated configuration;
+  they never read environment variables directly.
+- Validate required values, types, ranges, URL schemes, and incompatible options
+  before accepting traffic or starting a worker. For serverless/request bindings,
+  validate at entry before processing; do not require runtime secrets at build time.
+- Missing or invalid required configuration fails explicitly with the variable
+  name and expected shape, never its secret value. No silent production defaults.
+- Defaults are allowed only for documented optional settings. Parse booleans and
+  numbers explicitly; the string "false" must not become a truthy flag.
+- Separate public configuration from server secrets with distinct schemas and
+  exports. A shared configuration module must not pull secrets into client code.
+- Document names, purpose, required environments, and safe example placeholders
+  in `.env.example`. Declare the boundary location in `PROJECT.md`.
+- Test missing, malformed, out-of-range, conflicting, and valid settings, default
+  behavior, and the absence of server secrets from public output.
+
+## Business rules
+
+- Each calculation, eligibility rule, permission decision, and state transition
+  has one authoritative implementation owned by a domain module. Declare owners
+  and locations alongside the invariants in `PROJECT.md`.
+- UI, handlers, scheduled jobs, and integrations invoke that implementation.
+  Never duplicate business formulas or status rules in each entry point.
+- The server enforces every authoritative decision using trusted identity and
+  current data. Client-side previews and disabled controls are usability aids.
+- Share safe pure logic when runtimes permit; otherwise expose a server contract
+  and verify equivalent projections with common test vectors. Never share secrets
+  or server infrastructure merely to reuse a function.
+- Represent valid state transitions explicitly; reject invalid transitions and
+  verify preconditions atomically with the write when concurrent changes matter.
+- Database constraints/RLS remain defense in depth. Where a policy must exist in
+  multiple enforcement layers, generate it from one source when possible and
+  test agreement; do not remove database protections to avoid duplication.
+- Test invariants, rejected transitions, boundary calculations, and all entry
+  points that invoke a shared rule. A rule change updates its contract and tests.
+
+## Enforced architecture boundaries
+
+- Record module ownership, public entry points, allowed dependency directions,
+  and runtime boundaries in `PROJECT.md` or its linked architecture document.
+- Enforce that graph in the check command and CI using import rules, compiler
+  module boundaries, or an architecture test appropriate to the language.
+- Reject circular dependencies, imports of another module's internals, and
+  server-only imports reachable from client code, including transitive imports.
+- Domain logic depends on explicit contracts; infrastructure adapters implement
+  them. UI and transport handlers do not bypass the domain to perform writes.
+- Exceptions identify the exact dependency, reason, owner, and removal condition
+  in the architecture document. No blanket directory exclusions.
+- Test representative allowed and forbidden imports so configuration changes
+  cannot silently disable enforcement. Inspect build output for runtime leaks.
+
 ## Naming Conventions
 
 Defaults for JS/TS projects; other languages follow their rule in `languages/`
@@ -144,6 +198,9 @@ When editing any file:
 ## Checklist when touching any code
 - [ ] File under 300 lines, function under 50, nesting under 3, params under 4 (or documented exemption)
 - [ ] One responsibility per file; UI, data fetching, and business logic separated
+- [ ] Configuration validated at the runtime boundary; public and secret exports separated
+- [ ] Business rules have one owner; server enforcement and invariants tested
+- [ ] Architecture dependency checks pass; exceptions narrowly documented
 - [ ] Naming follows the table above or the language rule
 - [ ] Imports ordered; no barrel bypass; no circular dependency
 - [ ] Strictest type settings; no escape hatch without an inline reason

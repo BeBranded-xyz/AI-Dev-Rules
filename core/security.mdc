@@ -95,6 +95,13 @@ testing"). Every project runs at the stated gates:
 - **No raw PII in error trackers or logs** — see `observability.mdc`.
 - **Marketing email** must include an unsubscribe path.
 
+## Lifecycle and audit modules
+
+- Activate `modules/data-lifecycle.mdc` when storing persistent user or business
+  data; document retention, deletion propagation, and restore behavior.
+- Activate `modules/audit-trail.mdc` for sensitive administrative, permission,
+  or business operations. Operational logs do not replace an audit trail.
+
 ## Checklist when touching security-relevant code
 - [ ] No secret in code, config, logs, or client bundles; `.env.example` updated
 - [ ] Authorization enforced at the data layer (RLS or equivalent), default deny

@@ -42,7 +42,10 @@ one category per commit.
     issues by volume); log volume trend.
 13. **Ruleset version**: compare `.ruleset-version` with the ruleset repo's
     current commit (`git -C <source> rev-parse --short HEAD`, the source path
-    is in the file); if behind, propose `init.sh --dest . --update`.
+    is in the file). Read the source ruleset's `CHANGELOG.md` (installed copy:
+    `docs/reference/ruleset-changelog.md`) and report relevant migration steps
+    before proposing an update with the installed target. An installed SHA is
+    not proof that project-owned config or migration tasks have been updated.
 14. **Secrets and access** (report only): last rotation dates in
     `PROJECT.md`; CI secrets referenced but unused.
 

@@ -63,6 +63,17 @@ Last updated: {{YYYY-MM-DD}}
   limit never overridden): {{none}}
 - **Documented size-limit exemptions** (file paths): {{generated types, ...}}
 
+### Design system (projects with a UI)
+
+- **Token source and generated outputs**: {{paths; generation command}}
+- **Shared components / package and public API**: {{paths / import entry point}}
+- **Styling approach**: {{Tailwind / CSS modules / native styling / other}}
+- **Component catalogue**: {{Storybook or equivalent; path / command}}
+- **Supported themes**: {{light / dark / brand themes}}
+- **Icon library and custom assets**: {{library; central asset path}}
+- **Design system documentation / exceptions**: {{path}}
+- **Enforcement and visual verification commands**: {{commands; see TEST_PLAN.md}}
+
 ## 5. Environments & domains
 
 | Environment | URL / host | Notes |
@@ -82,6 +93,12 @@ Keep this in sync with the real structure — update in the same PR as a move.}}
 
 - **Monorepo?**: {{No / Yes — workspaces: ...}}
 
+### Configuration and architecture
+
+- **Validated configuration boundaries**: {{server / client / worker paths}}
+- **Module owners, public APIs, allowed dependency graph**: {{document path}}
+- **Architecture enforcement command and exceptions**: {{command / document}}
+
 ## 7. Data & source of truth
 
 - **Application database**: {{Supabase Postgres — owns: ...}}
@@ -98,6 +115,15 @@ Keep this in sync with the real structure — update in the same PR as a move.}}
 - {{e.g. Customer status ladder is upgrade-only: Prospect → Client → Ambassadeur.}}
 - {{e.g. Cart reservations have a 15-min TTL and live only in the app DB.}}
 - {{...}}
+
+### Domain ownership and data governance
+
+- **Authoritative business rule implementations**: {{domain -> owner / module}}
+- **State transitions and policy contracts**: {{document / schema paths}}
+- **Data lifecycle inventory**: {{category -> owner, stores, retention, deletion SLA}}
+- **Deletion, archival, and restore procedures**: {{runbook sections}}
+- **Audit event catalogue and storage**: {{document / schema / sink}}
+- **Audit access, retention, and failure policy**: {{roles / duration / behavior}}
 
 ## 8. Public identifiers
 
@@ -138,11 +164,14 @@ A rule for a tech you don't use is ignored.
 
 **Modules** (`modules/`)
 - [ ] `database` — relational DB, migrations, RLS
+- [ ] `data-lifecycle` — retention, archival, deletion propagation, safe restores (persistent user or business data)
+- [ ] `audit-trail` — durable, access-controlled history of sensitive operations
 - [ ] `auth` — authentication & session management
 - [ ] `integrations` — external services, webhooks, sync, serverless functions
 - [ ] `api-design` — REST/RPC conventions, error envelope, versioning, OpenAPI
 - [ ] `frontend` — components, accessibility, Core Web Vitals, design tokens
-- [ ] `data-fetching` — fastest reads, optimistic UI on every mutation, one clean data layer
+- [ ] `design-system` — shared components, semantic tokens, themes, catalogue, icons, enforcement (required for projects with a UI)
+- [ ] `data-fetching` — fast reads, safe optimistic updates, confirmed sensitive writes, one data layer
 - [ ] `i18n` — locales, dates/times, currencies, RTL
 - [ ] `performance` — budgets, caching, load testing
 - [ ] `background-jobs` — crons, queues, workers
@@ -170,6 +199,13 @@ tracked in `TEST_PLAN.md`; every category is required unless justified there.
 | `docs/adr/` | Architecture decision records |
 | {{docs/<schema>.md}} | {{Data model}} |
 | {{...}} | {{...}} |
+
+### Ruleset adoption (existing projects)
+
+- **Baseline date and check results**: {{date / report path / existing failures}}
+- **Legacy gaps and migration plan**: {{BACKLOG.md / docs/DEBT.md references}}
+- **Scoped temporary exceptions**: {{rule, files, owner, reason, expiry, issue}}
+- **Ruleset migration review**: {{source and target SHA / reviewed changelog entries}}
 
 ## 11. Key architecture decisions
 

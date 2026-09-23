@@ -10,22 +10,30 @@ parsed="$(INPUT="$input" python3 - <<'PY'
 import base64, json, os, sys
 try:
     d = json.loads(os.environ.get("INPUT", "") or "{}")
-except Exception:
-    sys.exit(0)
-ti = d.get("tool_input", {}) or {}
-fp = ti.get("file_path", "") or ""
+except (ValueError, TypeError):
+    sys.exit(1)
+ti = d["tool_input"]
+fp = ti["file_path"]
+if not isinstance(fp, str) or not fp.strip():
+    sys.exit(1)
 parts = []
 for k in ("content", "new_string"):
-    if ti.get(k): parts.append(ti[k])
+    if k in ti:
+        if not isinstance(ti[k], str): sys.exit(1)
+        parts.append(ti[k])
 for e in ti.get("edits", []) or []:
-    if e.get("new_string"): parts.append(e["new_string"])
+    value = e["new_string"]
+    if not isinstance(value, str): sys.exit(1)
+    parts.append(value)
+if not parts:
+    sys.exit(1)
 print(fp.replace("\n", " "))
 print(base64.b64encode("\n".join(parts).encode()).decode())
 PY
-)" || exit 0
+)" 2>/dev/null || { echo "Blocked: cannot inspect write payload. Check Python 3 and the write hook configuration." >&2; exit 2; }
 file_path="$(printf '%s\n' "$parsed" | sed -n 1p)"
-decoded="$(printf '%s\n' "$parsed" | sed -n 2p | base64 -d 2>/dev/null || true)"
-[[ -z "$file_path" ]] && exit 0
+decoded="$(printf '%s\n' "$parsed" | sed -n 2p | base64 -d 2>/dev/null)" || { echo "Blocked: cannot decode write content for secret scanning." >&2; exit 2; }
+[[ -z "$file_path" ]] && { echo "Blocked: write payload has no file path." >&2; exit 2; }
 
 base="$(basename "$file_path")"
 
@@ -35,13 +43,9 @@ if [[ "$base" =~ ^\.env(\..+)?$ ]] && [[ ! "$base" =~ (example|sample|template)$
   exit 2
 fi
 
-# 2. Skip files where secret-like strings are expected to be fake.
-case "$file_path" in
-  *.example|*.sample|*/fixtures/*|*/__snapshots__/*|*.md|*.mdc) exit 0 ;;
-esac
-
-
-# 3. High-confidence secret formats (provider-prefixed tokens, private keys).
+# 2. Scan all file types, including docs, examples, and fixtures. Use visibly
+# fake placeholders there, never strings matching credential formats.
+# High-confidence secret formats (provider-prefixed tokens, private keys).
 patterns=(
   'AKIA[0-9A-Z]{16}'                              # AWS access key id
   'sk_live_[0-9a-zA-Z]{20,}'                      # Stripe live secret

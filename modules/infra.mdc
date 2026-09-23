@@ -146,7 +146,7 @@ CMD ["node", "dist/server.js"]
 - **Automated daily backups** of every stateful store, encrypted, with a copy
   outside the primary platform. Retention, RPO, and RTO are in `PROJECT.md`.
 - **A backup that has not been restored is not a backup**: restore drill
-  monthly into an isolated environment (schedule in `modules/maintenance.mdc`).
+  monthly into an isolated environment (schedule in `core/maintenance.mdc`).
 - **The restore procedure is a runbook** with exact commands, validated on the drill.
 
 ### Rollback

@@ -179,7 +179,7 @@ and chaos tests, which run in a scheduled workflow.
 - **Chaos tests**: kill the worker mid-job (`SIGKILL`) and assert the job is
   redelivered and completes without double effects.
 - **Load tests** of queue throughput and age-of-oldest at the target load in
-  `PROJECT.md`; rerun quarterly (`modules/maintenance.mdc`).
+  `PROJECT.md`; rerun quarterly (`core/maintenance.mdc`).
 - **Schema tests**: invalid payloads are rejected on enqueue and routed to the
   DLQ on consume.
 

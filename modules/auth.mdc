@@ -3,6 +3,7 @@ description: Authentication & session management patterns. Generic. Apply when t
 globs:
   - "**/auth/**"
   - "**/middleware.ts"
+alwaysApply: false
 ---
 
 # Authentication

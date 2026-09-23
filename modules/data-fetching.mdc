@@ -1,5 +1,5 @@
 ---
-description: Data fetching between the UI and the database - fastest possible reads, optimistic UI on every mutation, one clean data layer. Apply when a frontend reads or writes application data.
+description: Data fetching between the UI and the database - fastest possible reads, safe optimistic UI and explicit pending states, one clean data layer. Apply when a frontend reads or writes application data.
 globs:
   - "**/*.queries.*"
   - "**/*.mutations.*"
@@ -16,16 +16,17 @@ alwaysApply: false
 Apply when `PROJECT.md` declares a frontend that reads or writes application
 data. Query mechanics live in `database.mdc`, component rules in
 `frontend.mdc`, budgets in `performance.mdc`. This rule fixes the contract
-between them: **every read is as fast as it can be, every write is
-optimistic, and the data layer is clean enough to read in one sitting.**
+between them: **reads meet their latency budgets, writes give immediate honest
+feedback, and the data layer stays readable.** This module owns the mutation
+feedback policy; other UI rules refer here.
 
 ## Principles
 
 1. **Latency is a feature.** A read that takes longer than its budget in
    `PROJECT.md` (default p95: 200 ms end to end) is a bug, not a tuning
    opportunity.
-2. **The user never waits for the server to see their own action.** Every
-   mutation updates the UI first, then reconciles.
+2. **Every action gives immediate feedback.** Safe mutations may update
+   optimistically; other mutations show pending until the server confirms.
 3. **One data layer, one shape.** The UI never knows which database, SDK, or
    transport is behind a query. Swapping the backend touches one directory.
 4. **Fetch once, share everywhere.** The same data is never requested twice in
@@ -88,23 +89,30 @@ optimistic, and the data layer is clean enough to read in one sitting.**
   p95 per query is visible in a dashboard and alerts when it crosses the
   budget.
 
-### Optimistic UI on every mutation
+### Mutation feedback policy
 
-- **Every mutation is optimistic by default.** The cache is updated to the
-  expected result before the request is sent; the UI reflects it
-  immediately. The only exceptions are actions whose result the client cannot
-  predict (payment capture, server-generated content) and they show an
-  explicit pending state instead.
-- **Standard sequence**: cancel in-flight queries for the affected keys,
+- **Use optimistic updates only when the result is predictable, the action is
+  low-risk, and rollback is reliable.** Typical examples are a local preference,
+  a like, or a rename without external side effects. Document the choice next to
+  the mutation; if eligibility is uncertain, show pending instead.
+- **Wait for server confirmation** for money, permission changes, destructive
+  or irreversible operations, scarce-resource reservations, and unpredictable
+  generated results. Show progress immediately without claiming success or
+  changing authoritative balances, access, availability, or status prematurely.
+- Both modes preserve user input on failure, prevent accidental duplicate
+  submission, and reconcile with the server's authoritative response.
+- **Eligible optimistic sequence**: cancel in-flight queries for affected keys,
   snapshot the current cache, apply the optimistic update, send the request,
-  on error roll back to the snapshot and show the mapped error message
+  on error undo only this mutation and show the mapped error message
   (`error-handling.mdc`), on settle invalidate the affected keys so the
   server truth replaces the guess.
+- Serialize conflicting optimistic writes or track per-mutation patches/versions.
+  A rollback must not restore an old snapshot over a newer successful change.
 - **Optimistic updates are pure functions** (`applyOptimisticAddItem(cache,
   input)`), unit-tested, reused by the rollback logic and the tests.
-- **Server-generated fields** (ids, timestamps, totals) get a temporary
-  client value marked as pending; the UI never blocks on them and the
-  reconciliation replaces them without visual jumps.
+- **Temporary fields** in eligible optimistic updates are visibly pending and
+  replaced during reconciliation. Never invent authoritative financial totals,
+  permissions, or final generated content; display pending until confirmed.
 - **Idempotency keys on every optimistic write** so a retry after a network
   failure does not duplicate the action (`api-design.mdc`).
 - **Conflicts are handled, not hidden**: a version or `updated_at` check on
@@ -113,8 +121,8 @@ optimistic, and the data layer is clean enough to read in one sitting.**
   data.
 - **Mutations return the updated entity** so the cache can be set from the
   response instead of a full refetch.
-- **Forms**: submit optimistically, keep inputs enabled, disable only the
-  submit control while pending, never clear user input on failure.
+- **Forms** follow the mutation eligibility rule above. Preserve edits while
+  pending where safe, prevent duplicate submission, and never clear input on failure.
 
 ### Optional: offline mode with a mutation queue
 
@@ -122,9 +130,10 @@ Off by default. Enable in `PROJECT.md` (section 9 notes) only when users
 work without connectivity (field apps, mobile in poor coverage). When enabled:
 - Reads are served from a persisted cache (IndexedDB, SQLite, MMKV) with a
   visible "offline, showing data from <time>" indicator.
-- Mutations go to a persisted queue with an idempotency key, applied
-  optimistically, replayed in order on reconnect, with per-item conflict
-  handling and a user-visible retry/discard UI for terminal failures.
+- Only mutations explicitly approved as offline-safe enter a persisted queue,
+  with idempotency keys, ordered replay, conflict handling, and retry/discard UI.
+  The same optimistic eligibility policy applies; never queue money, permission,
+  or irreversible actions for automatic execution on reconnect.
 - Queue replay is tested: order, duplicates after a crash, conflict, and a
   server rejection of the first item not blocking the rest.
 
@@ -184,15 +193,18 @@ Data fetching is a maximal-testing area (`testing.mdc`):
   regression.
 - **Waterfalls**: a test or lint that counts requests per screen render; more
   than one dependent round trip fails.
-- **Optimistic flows**: for every mutation, tests for immediate cache update,
+- **Optimistic flows**: for eligible mutations, tests for immediate cache update,
   rollback on error with the mapped message, reconciliation on success,
-  duplicate submission with the same idempotency key, and conflict handling.
+  duplicate submission with the same idempotency key, conflicts, and overlapping
+  writes where an older failure must not erase a newer success.
+- **Confirmed flows**: test immediate pending feedback, no premature success or
+  authoritative cache change, server rejection, timeout, retry, and final confirmation.
 - **Hooks**: tested with the query library's test utilities and MSW-style
   request mocks at the HTTP boundary, covering pending, error, empty, cached,
   and refetch states, plus abort on input change.
-- **E2E**: the critical journeys assert the optimistic state appears before
-  the network response (throttled network profile) and that a failed
-  request restores the prior state.
+- **E2E**: critical journeys assert the chosen optimistic or pending state
+  before the network response, reconciliation on success, and safe recovery
+  after rejection or timeout.
 - **Performance budgets**: Lighthouse and RUM budgets for the screens that
   depend on these queries (`performance.mdc`).
 
@@ -202,8 +214,8 @@ Data fetching is a maximal-testing area (`testing.mdc`):
 - [ ] Filters hit an index; `EXPLAIN` asserted in a test; paginated if it can grow
 - [ ] Server rendering or prefetch used where the data is not interactive
 - [ ] `staleTime` set deliberately; requests deduplicated; search debounced and abortable
-- [ ] Mutation is optimistic: cancel, snapshot, apply, rollback, invalidate
-- [ ] Optimistic update is a pure, tested function; idempotency key sent
+- [ ] Mutation mode justified: safe optimistic update or pending until confirmation
+- [ ] Eligible optimistic update is pure and tested; rollback preserves newer writes; idempotency key sent
 - [ ] Conflict path implemented and tested; no silent last-write-wins
 - [ ] Loading, error, and empty states rendered; no layout shift
 - [ ] Query keys centralized; invalidation explicit; dead queries removed

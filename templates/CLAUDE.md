@@ -43,6 +43,7 @@ re-deriving the procedure.
 
 ## Hooks
 
-- Pre-commit: blocks `git commit` when the check command fails. Never bypass
-  with `--no-verify`.
-- Pre-write: blocks writing files that contain secret-like strings.
+- Pre-commit: blocks recognized `git commit` calls when the check command is
+  missing, blank, or fails. Never bypass with `--no-verify`.
+- Pre-write: blocks secret-like strings in code, docs, examples, and fixtures.
+  These tool hooks complement CI; they do not cover other editors or shell writes.

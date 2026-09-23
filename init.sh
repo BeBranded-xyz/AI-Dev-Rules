@@ -5,7 +5,7 @@
 #   ./init.sh --dest ../my-project --update
 #
 # --update refreshes an existing project to the current ruleset. It overwrites
-# only files the ruleset owns (rules, hooks, skills, testing catalogue,
+# only files the ruleset owns (rules, hooks, skills, testing catalogue, changelog,
 # helper scripts), removes rule files that no longer exist upstream, adds any
 # new template file that is missing, and NEVER touches project-owned files
 # (PROJECT.md, TEST_PLAN.md, BACKLOG.md, CLAUDE.md, .env.example, registries,
@@ -185,6 +185,7 @@ put "$here/templates/DEBT.md" "$dest/docs/DEBT.md"
 put "$here/templates/RUNBOOK.md" "$dest/docs/RUNBOOK.md"
 put "$here/templates/ADR_TEMPLATE.md" "$dest/docs/adr/0000-template.md"
 put_owned "$here/docs/reference/testing-catalogue.md" "$dest/docs/reference/testing-catalogue.md"
+put_owned "$here/CHANGELOG.md" "$dest/docs/reference/ruleset-changelog.md"
 put "$here/templates/PULL_REQUEST_TEMPLATE.md" "$dest/.github/PULL_REQUEST_TEMPLATE.md"
 put "$here/templates/renovate.json" "$dest/renovate.json"
 for w in "$here"/templates/github/workflows/*.yml; do
@@ -206,17 +207,19 @@ for line in ".env" ".env.*" "!.env.example" ".DS_Store" "*.log" "coverage/" "tes
 done
 
 # Record which ruleset version the project is on.
+previous_ruleset="$(sed -n 's/^ruleset=//p' "$dest/.ruleset-version" 2>/dev/null || true)"
 ruleset_sha="$(git -C "$here" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 printf 'ruleset=%s\nupdated=%s\nsource=%s\n' "$ruleset_sha" "$(date -u +%Y-%m-%d)" "$here" > "$dest/.ruleset-version"
 
 echo "Done: $copied added, $updated updated, $removed removed, $skipped left untouched. Ruleset $ruleset_sha recorded in .ruleset-version."
 if [[ $update -eq 1 ]]; then
+  echo "Ruleset transition: ${previous_ruleset:-unknown} -> $ruleset_sha. Read docs/reference/ruleset-changelog.md for migration steps."
   [[ ${#updated_list[@]} -gt 0 ]] && { echo "Updated:"; printf '  %s\n' "${updated_list[@]}"; }
   [[ ${#added_list[@]} -gt 0 ]] && { echo "Added (new in the ruleset, fill in):"; printf '  %s\n' "${added_list[@]}"; }
   cat <<EOF
 
 After an update:
-  1. Review the diff: git -C "$dest" diff --stat
+  1. Read docs/reference/ruleset-changelog.md and review the diff: git -C "$dest" diff --stat
   2. Open PROJECT.md section 9: tick any new language / platform / module the ruleset now offers.
   3. Run /test-plan (audit) so TEST_PLAN.md picks up new categories or tooling.
   4. Commit as: chore(rules): update ruleset to $ruleset_sha

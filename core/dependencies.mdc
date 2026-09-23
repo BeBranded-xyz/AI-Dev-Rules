@@ -11,7 +11,7 @@ Applies to every project and every language. The package manager, registry,
 license exceptions, and Renovate schedule live in `PROJECT.md`;
 language-specific commands are in `languages/*.mdc`. Secrets and credential
 rules are in `core/security.mdc`; the maintenance cadence that reviews
-dependencies is in `modules/maintenance.mdc`.
+dependencies is in `core/maintenance.mdc`.
 
 ## Principles
 
@@ -75,7 +75,7 @@ blocks the addition.
 - **Automerge only for dev dependencies** (linters, formatters, test tools,
   type packages) with a green pipeline; runtime dependencies always get a
   human review.
-- **Update PRs are reviewed in the weekly ritual** (`modules/maintenance.mdc`);
+- **Update PRs are reviewed in the weekly ritual** (`core/maintenance.mdc`);
   an update PR older than 30 days is a debt item.
 - **Digest pins for actions and container images** are updated by Renovate as
   well (`modules/infra.mdc`).
@@ -101,7 +101,7 @@ blocks the addition.
 
 ### Removing unused dependencies
 
-- **Unused dependency detection runs monthly** (`modules/maintenance.mdc`) and
+- **Unused dependency detection runs monthly** (`core/maintenance.mdc`) and
   before any major upgrade; every reported package is removed or justified.
 - **Removal is its own `chore(deps)` commit**, with the lockfile diff.
 - **Replacing a dependency with in-house code** needs tests covering the

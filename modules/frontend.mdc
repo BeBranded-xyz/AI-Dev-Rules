@@ -20,6 +20,8 @@ library, styling choice (Tailwind or CSS modules), and supported browsers live i
 "no data fetching in effects" rule come from `core/code-standards.mdc`.
 
 Data access from the UI (query layer, optimistic mutations, caching) is governed by `data-fetching.mdc`.
+Shared components, tokens, themes, iconography, and their enforcement are
+governed by `design-system.mdc`; read it whenever building or changing UI.
 
 ## Principles
 
@@ -72,9 +74,8 @@ Data access from the UI (query layer, optimistic mutations, caching) is governed
 - **Errors are accessible**: each field has a visible label, `aria-invalid`, and
   an error message linked with `aria-describedby`; on submit failure, focus moves
   to the first invalid field and a summary is announced.
-- **Optimistic updates only when the rollback is trivial** (toggle, like, rename).
-  Anything involving money, permissions, or irreversible side effects waits for
-  the server response and shows a pending state.
+- **Mutation feedback follows `data-fetching.mdc`**, the authoritative policy
+  for optimistic eligibility, pending states, rollback, and confirmation.
 - **Never lose user input** on a failed submit; preserve values and show the
   server's field-level `details` next to the fields.
 
@@ -126,11 +127,10 @@ Targets at p75 on real devices (override only upward in `PROJECT.md`): **LCP
 
 ### Design tokens and styling
 
-- **Every color, spacing, radius, font size, z-index, and breakpoint is a token**
-  exposed as a CSS custom property (`--color-surface`, `--space-4`). Magic values
-  in component styles are forbidden.
-- **Dark mode via tokens**: `[data-theme="dark"]` (or `prefers-color-scheme`)
-  redefines the same variables; components never branch on theme.
+- Follow `design-system.mdc` for semantic tokens, shared component reuse,
+  supported themes, allowed structural/runtime values, and documented exceptions.
+- Breakpoints derive from the token source at build time; do not use CSS
+  custom properties as media-query conditions.
 - **One styling approach per project** (Tailwind or CSS modules, per
   `PROJECT.md`). No inline style objects except for values computed at runtime.
 - **No global overrides**: no unscoped element selectors after the reset, no
