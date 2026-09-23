@@ -9,6 +9,14 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### New requirements
 
+- Plan CI/CD before implementation. Merged PRs into protected `main` trigger
+  impact analysis and deployment of affected units only, including transitive
+  dependencies. Track successful deployment state separately per unit/environment.
+- Migration: activate `deployments`, fill the CI/CD plan in `PROJECT.md`, configure
+  hosting/CI ownership, and test selection/no-op/retry cases before enabling CD.
+  Existing workflows are preserved by update and must be adapted manually.
+
+
 - Shared design system: semantic tokens, reusable components, explicit variants
   and states, catalogue, consistent icons, and automated enforcement.
 - Validated configuration boundaries, authoritative business rule ownership,
@@ -22,6 +30,12 @@ version reference. Do not imply that uncommitted edits have a released version.
   `make check`, with Linux/macOS CI.
 
 ### Behavior changes
+
+- The release workflow template now handles version metadata only; its blanket
+  deployment jobs were removed. Configure affected-unit delivery from main merges
+  in the hosting integration or a project-specific pipeline. Existing projects
+  must review their preserved release workflow to avoid duplicate/global deploys.
+
 
 - `modules/data-fetching.mdc` owns the mutation feedback policy. Optimistic UI
   requires predictable results, low risk, and reliable rollback. Money,

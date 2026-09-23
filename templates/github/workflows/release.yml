@@ -1,7 +1,11 @@
 # Release template (modules/releases.mdc). Uses release-please to open a
 # release PR from conventional commits, generate CHANGELOG.md, tag, and create
-# the GitHub release. Deployment jobs then run against the tag with canary +
-# automated rollback. Copy to .github/workflows/release.yml and fill in.
+# the GitHub release. This workflow owns version metadata only.
+# Production deployment belongs to the project's delivery plan (see
+# modules/deployments.mdc): analyze every PR merge into main, gate the exact
+# revision, and deploy only affected units. Implement that pipeline or configure
+# the hosting integration before enabling production delivery. Do not attach a
+# blanket deploy to release_created or create a second deployment owner.
 
 name: Release
 
@@ -12,7 +16,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
 
 jobs:
   release-please:
@@ -25,34 +28,3 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           release-type: node
-
-  deploy-canary:
-    needs: release-please
-    if: needs.release-please.outputs.released == 'true'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-        with: { ref: "${{ needs.release-please.outputs.tag }}" }
-      - name: Deploy canary (10%)
-        run: pnpm deploy:canary --percent 10
-        env: { RELEASE: "${{ needs.release-please.outputs.tag }}" }
-      - name: Smoke + synthetic checks on canary
-        run: pnpm test:smoke --target canary
-      - name: Watch error rate and latency for 10 minutes
-        run: scripts/watch-slo.sh --window 10m --max-error-rate 1% --max-p95 500ms
-      - name: Rollback on breach
-        if: failure()
-        run: pnpm deploy:rollback
-
-  promote:
-    needs: [release-please, deploy-canary]
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - name: Promote to 100%
-        run: pnpm deploy:promote
-      - name: Post-release verification
-        run: pnpm test:smoke --target production
-      - name: Annotate release in error tracker
-        run: pnpm exec sentry-cli releases finalize "${{ needs.release-please.outputs.tag }}"

@@ -29,7 +29,8 @@ Last updated: {{YYYY-MM-DD}}
   green before any commit): {{`pnpm check`}}
 - **Build / start**: {{e.g. `pnpm build` / `pnpm start`}}
 - **Deployment target**: {{e.g. Vercel / Webflow Cloud / Fly.io / self-hosted}}
-- **What triggers a deploy**: {{e.g. push to `main` auto-deploys}}
+- **What triggers a deploy**: PR merged into protected `main` -> impact analysis
+  -> required checks -> affected units only (see delivery plan below).
 
 ## 3. Tech stack
 
@@ -83,6 +84,19 @@ Last updated: {{YYYY-MM-DD}}
 | Local | {{http://localhost:3000}} | |
 
 - **Mount path / base path** (if app is not at root): {{e.g. /app}}
+
+### CI/CD and deployment plan
+
+- **Delivery plan and dependency graph**: {{document path; review before implementation}}
+- **Required checks / main branch protection**: {{check names / PR merge policy}}
+- **Affected-unit selector and tests**: {{command / test command}}
+- **Deployment state**: {{per unit/environment: last successful SHA and artifact store}}
+- **Ordering, concurrency, failure, and rollback**: {{runbook sections}}
+- **Hosting auto-deploy filters / CI ownership**: {{one owner per unit/environment}}
+
+| Deployable unit | Source and shared inputs | Target / deployment owner | Build / verify / deploy | Rollback |
+|---|---|---|---|---|
+| {{web / API / worker / migrations}} | {{paths and transitive dependencies}} | {{environment / hosting or CI}} | {{commands}} | {{artifact / procedure}} |
 
 ## 6. Repository structure
 
@@ -177,6 +191,7 @@ A rule for a tech you don't use is ignored.
 - [ ] `background-jobs` — crons, queues, workers
 - [ ] `observability` — error tracking, tracing, structured logging
 - [ ] `infra` — CI/CD, Docker, IaC, environments
+- [ ] `deployments` — planned CI/CD, PR-to-main triggers, affected units, deployment state
 - [ ] `releases` — versioning, changelog, flags, progressive delivery
 - [ ] `ai-features` — the product calls LLMs
 - [ ] `maintenance` — monthly ritual, debt register (recommended for every project past MVP)

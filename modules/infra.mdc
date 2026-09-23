@@ -21,7 +21,8 @@ regions, required check names, budgets, and RPO/RTO targets live in `PROJECT.md`
 Branching, PR, and commit rules are in `core/github-workflow.mdc`; the secrets
 baseline is in `core/security.mdc`; progressive delivery and rollback thresholds
 are in `modules/releases.mdc`; serverless function structure is in
-`modules/integrations.mdc`. This rule does not repeat them.
+`modules/integrations.mdc`. Deployment planning, merge triggers, and affected-unit
+selection are governed by `modules/deployments.mdc`; read it before editing CI/CD.
 
 ## Principles
 
@@ -68,7 +69,8 @@ Run stages in this order; a failure stops the pipeline.
 ### Environments and promotion
 
 - **Promotion path is `dev` -> `preview`/`staging` -> `production`.** Production
-  deploys only from `main` or the release tag (`modules/releases.mdc`).
+  delivery starts after a PR merges into protected `main`; only affected units
+  deploy after their gates pass (`modules/deployments.mdc`). Tags identify artifacts.
 - **Same image, same commit SHA** across the path; the deploy records the SHA.
 - **Parity**: identical Dockerfile, runtime version, env var names, and
   migrations. List intentional differences (replicas, instance size, flag
@@ -206,6 +208,7 @@ The project's single check command (`make check` / `pnpm check`, see
 
 ## Checklist when touching infra code
 
+- [ ] Delivery plan reviewed; affected-unit selection and hosting ownership tested
 - [ ] Stage order respected; required checks in `PROJECT.md` still pass
 - [ ] Every job has a timeout and a concurrency group; actions pinned by SHA
 - [ ] Caches keyed on lockfile hash; matrix covers supported runtimes

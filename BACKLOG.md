@@ -24,3 +24,6 @@ None.
 - Defined scoped adoption and legacy-gap tracking for existing projects.
 - Added the ruleset changelog, consumer migration steps, distribution, and update
   version-transition reporting while preserving the application changelog.
+
+- Added planned CI/CD and selective deployment policy: merged main triggers,
+  dependency-aware selection, per-unit baselines, ownership, and recovery tests.

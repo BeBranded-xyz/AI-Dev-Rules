@@ -138,6 +138,8 @@ changes locally.
 - Never disable checks to merge.
 - Update workflow files in the same PR as the infrastructure change requiring them.
 - The project's required workflows and deploy triggers are listed in `PROJECT.md`.
+- A reviewed PR merged into protected `main` triggers production impact analysis.
+  Deploy only affected units after their gates pass, per `modules/deployments.mdc`.
 
 ## Hotfix Procedure
 

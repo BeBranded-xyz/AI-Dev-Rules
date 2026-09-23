@@ -15,7 +15,9 @@ Apply to every file matching the globs and to any work that ships code to
 users. The release tool, flag registry, SLO thresholds, canary steps, and store
 accounts live in `PROJECT.md`. Branching, commits, and the hotfix procedure are
 in `core/github-workflow.mdc`; pipelines and environments in
-`modules/infra.mdc`; migrations in `modules/database.mdc`.
+`modules/infra.mdc`; migrations in `modules/database.mdc`. Deployment triggers
+and affected-unit selection follow `modules/deployments.mdc`. Versioning jobs
+must not independently redeploy the application or require redeploying all units.
 
 **This rule is the authority on `CHANGELOG.md`.** It supersedes any hand-written
 changelog format: `core/github-workflow.mdc` defers here, the changelog is
@@ -71,6 +73,9 @@ typed by hand.
 
 ### Release branches
 
+- **Deploy affected units after a PR merges into `main`**, continuously.
+  Run impact analysis on every merge, independently of whether release notes
+  or a new version are generated. Rollout and rollback are scoped to selected units.
 - **Default: release from `main`**, continuously. Create `release/X.Y` only
   when `PROJECT.md` requires supporting more than one version in production
   (on-prem, mobile, SDKs).
@@ -200,6 +205,7 @@ SDK behind one module. The project's single check command (`make check` /
 
 ## Checklist when touching release code
 
+- [ ] Main merge analyzed; only affected units selected; no duplicate hosting/CI deploy
 - [ ] Version derived from commits; no hand-edited version or `CHANGELOG.md`
 - [ ] Commits are conventional with scopes; breaking changes flagged
 - [ ] Tag signed and created by the release tool

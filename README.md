@@ -26,6 +26,11 @@ maintained in English.
   tokens instead of hardcoded design values, documented variants and states,
   consistent icons, and automated checks (`modules/design-system.mdc`).
 
+- **Planned, selective delivery**: reviewed PR merges into `main` trigger impact
+  analysis; only affected deployment units and their required dependants deploy.
+  CI/CD ownership, baselines, gates, and recovery are documented before setup
+  (`modules/deployments.mdc`).
+
 ## Layout
 
 ```
@@ -47,7 +52,7 @@ platforms/                  Apply per platform (globs)
   nextjs, supabase, cloudflare-workers, webflow, vercel
 modules/                    Apply when PROJECT.md marks them active
   database, auth, integrations, api-design, frontend, design-system, data-fetching, i18n, performance,
-  background-jobs, observability, infra, releases, ai-features,
+  background-jobs, observability, infra, deployments, releases, ai-features,
   data-lifecycle, audit-trail, graphify
 templates/                  Files every project gets
   TEST_PLAN.md              All 72 test categories with status / tool / command / gate
@@ -56,7 +61,7 @@ templates/                  Files every project gets
   .env.example, PULL_REQUEST_TEMPLATE.md, renovate.json
   FUNCTIONS_REGISTRY.md, MIGRATIONS_CHANGELOG.md, FEATURE_FLAGS.md,
   DEBT.md, RUNBOOK.md, ADR_TEMPLATE.md
-  github/workflows/         ci.yml (commit + PR gates), pre-production.yml, release.yml (actionlint-clean, pnpm defaults)
+  github/workflows/         ci.yml (commit + PR gates), pre-production.yml, release.yml (version metadata only; configure selective CD per project)
   scripts/                  check-licenses.mjs, watch-slo.sh used by the workflows
 claude/                     Claude Code harness
   settings.json             Hooks wiring
