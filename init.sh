@@ -209,7 +209,11 @@ done
 # Record which ruleset version the project is on.
 previous_ruleset="$(sed -n 's/^ruleset=//p' "$dest/.ruleset-version" 2>/dev/null || true)"
 ruleset_sha="$(git -C "$here" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-printf 'ruleset=%s\nupdated=%s\nsource=%s\n' "$ruleset_sha" "$(date -u +%Y-%m-%d)" "$here" > "$dest/.ruleset-version"
+# Record the ruleset's remote URL, never the local clone path (it exposes the
+# machine's user and layout in committed files). Strip credentials from the URL.
+ruleset_source="$(git -C "$here" remote get-url origin 2>/dev/null | sed -E 's#^(https?://)[^/@]+@#\1#' || true)"
+[[ -z "$ruleset_source" || "$ruleset_source" == /* || "$ruleset_source" == file:* ]] && ruleset_source="unknown"
+printf 'ruleset=%s\nupdated=%s\nsource=%s\n' "$ruleset_sha" "$(date -u +%Y-%m-%d)" "$ruleset_source" > "$dest/.ruleset-version"
 
 echo "Done: $copied added, $updated updated, $removed removed, $skipped left untouched. Ruleset $ruleset_sha recorded in .ruleset-version."
 if [[ $update -eq 1 ]]; then

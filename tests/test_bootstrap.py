@@ -72,6 +72,15 @@ class BootstrapTests(unittest.TestCase):
                 self.assertFalse((self.destination / other).exists())
                 self.assertTrue((self.destination / 'TEST_PLAN.md').is_file())
 
+    def test_ruleset_version_does_not_leak_local_paths_or_credentials(self) -> None:
+        self.install()
+        recorded = (self.destination / '.ruleset-version').read_text(encoding='utf-8')
+        self.assertNotIn(str(ROOT), recorded)
+        self.assertNotIn(str(Path.home()), recorded)
+        source = re.search(r'^source=(.*)$', recorded, re.M).group(1)
+        self.assertNotRegex(source, r'://[^/@]+@', 'credentials in the source URL')
+        self.assertFalse(source.startswith('/'), source)
+
     def test_reinstall_is_idempotent(self) -> None:
         self.install()
         before = self.snapshot()

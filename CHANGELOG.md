@@ -104,6 +104,13 @@ version reference. Do not imply that uncommitted edits have a released version.
   `severity` value is quoted so it is not split by the YAML flow mapping.
   Migration: workflows are project-owned and are not updated by `--update`;
   compare yours with the new templates and apply the same changes manually.
+- `init.sh` wrote the absolute local path of the ruleset clone into
+  `.ruleset-version` (`source=`), which projects commit, exposing the machine's
+  user name and directory layout. It now records the clone's `origin` URL with
+  any credentials stripped, or `unknown`. `/health-check` compares with
+  `git ls-remote <source> HEAD`. Migration: run `init.sh --update`, then check
+  that the committed `.ruleset-version` no longer contains a local path; public
+  repositories should treat the old value as already published.
 - Fixed stale maintenance rule references, missing rule activation metadata,
   and missing checklists detected by the integrity checks.
 
