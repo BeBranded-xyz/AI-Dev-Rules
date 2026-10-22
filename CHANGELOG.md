@@ -31,6 +31,16 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### Behavior changes
 
+- `init.sh --target` accepts `codex`, `all` (Claude, Cursor, and Codex), and
+  comma-separated lists such as `claude,codex`; `both` keeps meaning Claude and
+  Cursor. The Codex target writes `AGENTS.md` from `templates/AGENTS.md` with a
+  generated rule index (rebuilt on update, text above it preserved). It reuses
+  `.claude/` rules and skills when Claude is a target, otherwise installs them
+  under `.agents/`. Codex has no hooks: `AGENTS.md` makes the check command and
+  secret hygiene explicit, and CI remains the enforcement gate.
+  Migration: none for existing targets. To add Codex, run
+  `init.sh --dest <project> --target <current>,codex --update` and commit
+  `AGENTS.md`.
 - The release workflow template now handles version metadata only; its blanket
   deployment jobs were removed. Configure affected-unit delivery from main merges
   in the hosting integration or a project-specific pipeline. Existing projects

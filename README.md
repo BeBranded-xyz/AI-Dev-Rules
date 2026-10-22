@@ -1,7 +1,7 @@
 # AI Development Rules
 
 A reusable, project-agnostic engineering ruleset for building software with AI
-assistants (Claude Code, Cursor). Bootstrap it into a project, fill in one
+assistants (Claude Code, Cursor, Codex). Bootstrap it into a project, fill in one
 identity file, and every rule applies without edits.
 
 Everything in this repository is written in English and stays in English: code,
@@ -58,6 +58,7 @@ templates/                  Files every project gets
   TEST_PLAN.md              All 72 test categories with status / tool / command / gate
   BACKLOG.md                The project's task backlog, updated at the end of every task
   CLAUDE.md                 Project entry point for Claude Code
+  AGENTS.md                 Project entry point for Codex and other AGENTS.md readers
   .env.example, PULL_REQUEST_TEMPLATE.md, renovate.json
   FUNCTIONS_REGISTRY.md, MIGRATIONS_CHANGELOG.md, FEATURE_FLAGS.md,
   DEBT.md, RUNBOOK.md, ADR_TEMPLATE.md
@@ -71,6 +72,7 @@ docs/reference/
   testing-catalogue.md      The 72 categories and what each detects
 CHANGELOG.md                Ruleset changes and consumer migration steps
 init.sh                     Bootstrap script
+scripts/agents-index.py     Builds the rule index at the end of a project's AGENTS.md
 tests/                      Ruleset integrity and installer regression tests
 Makefile                    Local check entry point
 .github/workflows/          CI for this ruleset itself
@@ -83,15 +85,21 @@ git clone <this repo> rules
 ./rules/init.sh --dest ../my-project --target both --name "My Project" --check "pnpm check"
 ```
 
-`--target` is `claude`, `cursor`, or `both`. The script never overwrites an
-existing file (use `--force` to do so). It:
+`--target` is `claude`, `cursor`, `codex`, `both` (Claude and Cursor, the
+default), `all`, or a comma-separated list such as `claude,codex`. The script
+never overwrites an existing file (use `--force` to do so). It:
 
 1. Copies the rules into `.cursor/rules/` (Cursor, `.mdc`) and/or converts them
    into `.claude/rules/` (Claude Code, `.md`, `globs` become `paths`). Conditional
    rules without a file pattern go to `.claude/rules-on-demand/` and are listed
    in `CLAUDE.md`.
 2. Installs the Claude Code hooks and skills into `.claude/`.
-3. Copies `PROJECT.md`, `TEST_PLAN.md`, the registries, `.env.example`, the PR
+3. For Codex, writes `AGENTS.md`: the entry point plus a generated index of the
+   rule files. It reuses `.claude/rules/` and `.claude/skills/` when Claude is
+   also a target, otherwise it installs the same files into `.agents/`. Codex
+   has no equivalent of the Claude hooks, so `AGENTS.md` tells the agent to run
+   the check command itself; keep CI checks and secret scanning required.
+4. Copies `PROJECT.md`, `TEST_PLAN.md`, the registries, `.env.example`, the PR
    template, the CI workflows, and `renovate.json`.
 
 Then:
@@ -123,7 +131,9 @@ cd rules && git pull
 
 Before updating, note the installed SHA in `.ruleset-version` and review
 [CHANGELOG.md](CHANGELOG.md), including the migration steps for intervening
-changes. For a single-target project, pass `--target claude` or `--target cursor`.
+changes. Pass the installed targets explicitly unless they are the default
+`both`, for example `--target claude` or `--target claude,codex`. On update,
+the text above `## Rule files` in `AGENTS.md` is kept and the index is rebuilt.
 
 `--update` overwrites only what the ruleset owns: the rules in
 `.cursor/rules/` and `.claude/rules/`, the hooks, the skills, the testing
