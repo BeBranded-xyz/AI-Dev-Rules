@@ -40,7 +40,7 @@ blocks the addition.
 | Criterion | Requirement |
 |---|---|
 | Maintained | Release or commit in the last 12 months; issues answered; more than one maintainer for anything on a critical path |
-| License | On the allowlist: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC. Anything else (GPL, AGPL, SSPL, BUSL, unlicensed) needs an exception in `PROJECT.md` |
+| License | On the allowlist of `templates/scripts/check-licenses.mjs` (MIT, ISC, BSD-2/3-Clause, Apache-2.0, 0BSD, CC0-1.0, Unlicense, MPL-2.0, Python-2.0, BlueOak-1.0.0, CC-BY-4.0). Anything else (GPL, LGPL, AGPL, SSPL, BUSL, commercial, unlicensed) needs an exception in `PROJECT.md` |
 | Security history | No unresolved advisories; past advisories fixed promptly |
 | Could we write it | If the needed subset is under 100 lines, write it and test it instead |
 | Size | Bundle or binary impact measured for client-side code; no package that pulls a framework for one helper |
@@ -94,7 +94,14 @@ blocks the addition.
 
 - **The license check runs in CI** against the allowlist above; a
   non-allowlisted license fails the job unless listed as an exception in
-  `PROJECT.md`.
+  `PROJECT.md`. SPDX expressions are evaluated: `OR` needs one allowed
+  option (record which one the project uses), `AND` needs every license allowed.
+- **MPL-2.0 is allowed unmodified only**: its copyleft applies per file, so
+  patching or vendoring MPL files requires publishing those files under MPL.
+  CC-BY-4.0 is for data and documentation packages, never for code.
+- **Never copy code from an incompatible license.** Reading GPL, AGPL, or
+  commercial source and rewriting it creates a derivative work. Reimplement
+  such features clean-room from documentation and observed behavior only.
 - **An SBOM is generated on every release build** (CycloneDX or SPDX via
   `syft`, `cdxgen`, `trivy sbom`, or the ecosystem tool) and stored with the
   release artifacts.
@@ -198,6 +205,7 @@ and unused-dependency checks alongside typecheck, lint, and tests.
 
 - [ ] Addition justified against the criteria table in the PR description
 - [ ] License on the allowlist or an exception recorded in `PROJECT.md`
+- [ ] No code copied or translated from an incompatible license; clean-room reimplementation documented
 - [ ] Installed version checked and the real API read before writing code
 - [ ] Exact pin for apps, range for libraries; lockfile committed and updated
 - [ ] CI install is frozen; runtime version pinned and matching CI

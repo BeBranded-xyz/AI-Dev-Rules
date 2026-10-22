@@ -2,6 +2,8 @@
 // License allowlist check (core/dependencies.mdc).
 // Usage: pnpm licenses list --json | node scripts/check-licenses.mjs
 // Exit 1 when any production dependency uses a license outside the allowlist.
+// SPDX expressions are evaluated: OR needs one allowed option, AND needs every
+// license allowed, AND binds tighter than OR, and malformed expressions fail.
 // Extend ALLOWED or EXCEPTIONS in the project; every exception needs a reason.
 
 import { readFileSync } from "node:fs";
@@ -16,6 +18,62 @@ const EXCEPTIONS = new Map([
   // ["some-package", "Vendor-approved commercial license, contract #123"],
 ]);
 
+function tokenize(expression) {
+  return expression.match(/\(|\)|[^\s()]+/g) ?? [];
+}
+
+// Grammar: or := and ("OR" and)* ; and := atom ("AND" atom)* ; atom := id | "(" or ")"
+// "WITH" exceptions are kept as part of the license id, so they are never allowlisted.
+function isAllowed(expression) {
+  const tokens = tokenize(expression);
+  let position = 0;
+  const peekOperator = () => tokens[position]?.toUpperCase();
+  const parseAtom = () => {
+    const token = tokens[position++];
+    if (token === undefined || token === ")" || ["AND", "OR"].includes(token.toUpperCase())) {
+      throw new Error(`unexpected token "${token ?? "end of expression"}"`);
+    }
+    if (token === "(") {
+      const value = parseOr();
+      if (tokens[position++] !== ")") throw new Error("missing closing parenthesis");
+      return value;
+    }
+    let id = token;
+    while (peekOperator() === "WITH") {
+      id += ` WITH ${tokens[position + 1] ?? ""}`;
+      position += 2;
+    }
+    return ALLOWED.has(id);
+  };
+  const parseAnd = () => {
+    let value = parseAtom();
+    while (peekOperator() === "AND") {
+      position++;
+      value = parseAtom() && value;
+    }
+    return value;
+  };
+  const parseOr = () => {
+    let value = parseAnd();
+    while (peekOperator() === "OR") {
+      position++;
+      value = parseAnd() || value;
+    }
+    return value;
+  };
+  const value = parseOr();
+  if (position !== tokens.length) throw new Error(`unexpected token "${tokens[position]}"`);
+  return value;
+}
+
+function evaluate(expression) {
+  try {
+    return { allowed: isAllowed(expression) };
+  } catch (error) {
+    return { allowed: false, reason: `unparseable license expression: ${error.message}` };
+  }
+}
+
 const raw = readFileSync(0, "utf8").trim();
 if (!raw) {
   console.error("check-licenses: no input on stdin");
@@ -26,12 +84,12 @@ if (!raw) {
 const byLicense = JSON.parse(raw);
 const violations = [];
 for (const [license, packages] of Object.entries(byLicense)) {
-  const expr = license.replace(/[()]/g, "");
-  const ok = expr.split(/\s+(?:OR|AND)\s+/i).some((part) => ALLOWED.has(part.trim()));
-  if (ok) continue;
+  const { allowed, reason } = evaluate(license);
+  if (allowed) continue;
   for (const pkg of packages) {
     if (EXCEPTIONS.has(pkg.name)) continue;
-    violations.push(`${pkg.name}@${(pkg.versions ?? []).join(",")} -> ${license}`);
+    const detail = reason ? ` (${reason})` : "";
+    violations.push(`${pkg.name}@${(pkg.versions ?? []).join(",")} -> ${license || "<empty>"}${detail}`);
   }
 }
 
