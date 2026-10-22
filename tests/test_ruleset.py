@@ -46,6 +46,24 @@ class RulesetTests(unittest.TestCase):
                     else:
                         self.assertIn(reference, names)
 
+    def test_workflow_templates_follow_supply_chain_rules(self) -> None:
+        workflows = list((ROOT / 'templates/github/workflows').glob('*.yml'))
+        workflows += list((ROOT / '.github/workflows').glob('*.yml'))
+        for path in workflows:
+            content = path.read_text(encoding='utf-8')
+            with self.subTest(workflow=str(path.relative_to(ROOT))):
+                for reference in re.findall(r'uses: (\S+)', content):
+                    self.assertRegex(reference, r'@[0-9a-f]{40}$', 'pin actions by commit SHA')
+                steps = re.split(r'\n\s+- ', content)
+                checkouts = [step for step in steps if 'uses: actions/checkout@' in step]
+                self.assertEqual(len(checkouts), content.count('uses: actions/checkout@'))
+                for step in checkouts:
+                    self.assertIn('persist-credentials: false', step)
+                inline = re.findall(r'run: [^\n]*\$\{\{[^\n]*', content)
+                self.assertEqual(inline, [], 'pass expressions to scripts through env')
+                top_level = content.split('\njobs:', 1)[0]
+                self.assertNotIn(': write', top_level, 'grant write permissions per job')
+
     def test_shell_syntax(self) -> None:
         scripts = [ROOT / 'init.sh', *ROOT.glob('claude/hooks/*.sh')]
         scripts += list(ROOT.glob('templates/scripts/*.sh'))

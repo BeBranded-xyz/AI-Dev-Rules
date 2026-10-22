@@ -84,6 +84,26 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### Corrections
 
+- `templates/scripts/check-licenses.mjs` evaluated every SPDX expression as if
+  all operators were `OR`, so `MIT AND GPL-3.0` passed. It now parses the
+  expression (`AND` needs every license allowed, `AND` binds tighter than `OR`,
+  `WITH` exceptions are not allowlisted) and fails closed on malformed input.
+  Migration: run `init.sh --update` (the script is ruleset-owned), then rerun the
+  license check; newly reported packages were already non-compliant.
+- `core/dependencies.mdc` now lists the same license allowlist as the script,
+  restricts MPL-2.0 to unmodified dependencies and CC-BY-4.0 to data and docs,
+  and forbids copying code from incompatible licenses (clean-room reimplementation).
+- Workflow templates now follow `modules/infra.mdc`: actions pinned by commit
+  SHA (including `trivy-action`, previously `@master`), `contents: read` at the
+  workflow level with write permissions granted per job, `persist-credentials:
+  false` on every checkout, a timeout on every job, and expressions passed to
+  scripts through `env` instead of being interpolated into `run`. The secret
+  scan installs the gitleaks CLI with a verified checksum, because
+  `gitleaks-action` requires a paid license on organization repositories. The
+  pre-production template defines the `NODE_VERSION` it uses, and the trivy
+  `severity` value is quoted so it is not split by the YAML flow mapping.
+  Migration: workflows are project-owned and are not updated by `--update`;
+  compare yours with the new templates and apply the same changes manually.
 - Fixed stale maintenance rule references, missing rule activation metadata,
   and missing checklists detected by the integrity checks.
 
