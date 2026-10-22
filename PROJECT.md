@@ -194,6 +194,8 @@ A rule for a tech you don't use is ignored.
 - [ ] `deployments` — planned CI/CD, PR-to-main triggers, affected units, deployment state
 - [ ] `releases` — versioning, changelog, flags, progressive delivery
 - [ ] `ai-features` — the product calls LLMs
+- [ ] `library-publishing` — the project ships packages others install (npm, PyPI, crates.io…)
+- [ ] `open-source` — the repository is public or distributed under an open-source license
 - [ ] `maintenance` — monthly ritual, debt register (recommended for every project past MVP)
 - [ ] `graphify` — knowledge-graph tooling (`graphify-out/`)
 

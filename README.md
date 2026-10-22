@@ -53,7 +53,7 @@ platforms/                  Apply per platform (globs)
 modules/                    Apply when PROJECT.md marks them active
   database, auth, integrations, api-design, frontend, design-system, data-fetching, i18n, performance,
   background-jobs, observability, infra, deployments, releases, ai-features,
-  data-lifecycle, audit-trail, graphify
+  data-lifecycle, audit-trail, library-publishing, open-source, graphify
 templates/                  Files every project gets
   TEST_PLAN.md              All 72 test categories with status / tool / command / gate
   BACKLOG.md                The project's task backlog, updated at the end of every task

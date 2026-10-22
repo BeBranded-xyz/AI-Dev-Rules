@@ -9,6 +9,18 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### New requirements
 
+- New `library-publishing` module for projects that ship packages: public API
+  report and type-level semver, allowlisted package contents, compatibility
+  matrix with consumer tests on the packed tarball, trusted publishing with
+  provenance and no stored registry token, deprecation and broken-release policy.
+  It replaces the canary and rollback sections of `releases.mdc` for packages.
+- New `open-source` module for public repositories: never-publish list (business
+  context and personal emails included), going-public procedure, history-wide
+  secret scanning, clean-room rule for incompatible licenses, governance files,
+  and fork and workflow security.
+- Migration: tick `library-publishing` and/or `open-source` in `PROJECT.md`
+  section 9 when they apply, then run `init.sh --update`. No change for
+  projects that do neither.
 - Plan CI/CD before implementation. Merged PRs into protected `main` trigger
   impact analysis and deployment of affected units only, including transitive
   dependencies. Track successful deployment state separately per unit/environment.
