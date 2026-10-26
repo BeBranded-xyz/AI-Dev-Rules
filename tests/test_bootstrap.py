@@ -81,11 +81,79 @@ class BootstrapTests(unittest.TestCase):
         self.assertNotRegex(source, r'://[^/@]+@', 'credentials in the source URL')
         self.assertFalse(source.startswith('/'), source)
 
+    def assert_agents_index(self, root: str) -> str:
+        agents = (self.destination / 'AGENTS.md').read_text(encoding='utf-8')
+        self.assertIn('Fixture Project', agents)
+        self.assertNotIn('{{PROJECT_NAME}}', agents)
+        self.assertNotIn('{{RULES_ROOT}}', agents)
+        self.assertEqual(agents.count('## Rule files'), 1)
+        listed = re.findall(r'^- `([^`]+\.md)`', agents, re.M)
+        installed = sorted(
+            p.relative_to(self.destination).as_posix()
+            for folder in ('rules', 'rules-on-demand')
+            for p in (self.destination / root / folder).rglob('*.md')
+        )
+        self.assertEqual(sorted(listed), installed)
+        self.assertIn(f'`{root}/rules/core/ai-workflow.md`', agents)
+        return agents
+
+    def test_codex_alone_installs_rules_and_skills_under_agents(self) -> None:
+        self.install('codex')
+        self.assert_agents_index('.agents')
+        self.assertTrue((self.destination / '.agents/skills/check/SKILL.md').is_file())
+        for absent in ('.claude', '.cursor', 'CLAUDE.md'):
+            self.assertFalse((self.destination / absent).exists(), absent)
+        self.assertTrue((self.destination / 'PROJECT.md').is_file())
+
+    def test_codex_with_claude_reuses_claude_rules(self) -> None:
+        self.install('claude,codex', '--check', 'make check')
+        agents = self.assert_agents_index('.claude')
+        self.assertIn('Check command: `make check`', agents)
+        self.assertNotIn('{{', agents)
+        self.assertIn('.claude/skills/*/SKILL.md', agents)
+        self.assertFalse((self.destination / '.agents').exists())
+        self.assertFalse((self.destination / '.cursor').exists())
+        self.assertTrue((self.destination / 'CLAUDE.md').is_file())
+
+    def test_all_installs_every_harness(self) -> None:
+        self.install('all')
+        self.assert_agents_index('.claude')
+        for present in ('.cursor/rules/core/security.mdc', '.claude/settings.json', 'CLAUDE.md'):
+            self.assertTrue((self.destination / present).exists(), present)
+
+    def test_update_keeps_agents_text_and_rebuilds_index(self) -> None:
+        self.install('claude,codex')
+        agents = self.destination / 'AGENTS.md'
+        agents.write_text('Custom agent instructions\n\n' + agents.read_text())
+        stale = self.destination / '.claude/rules/modules/removed-upstream.md'
+        stale.write_text('---\ndescription: Stale\n---\nStale rule\n')
+        self.install('claude,codex', '--update')
+        self.assertTrue(agents.read_text().startswith('Custom agent instructions\n'))
+        self.assertFalse(stale.exists())
+        self.assertNotIn('removed-upstream', agents.read_text())
+        self.assert_agents_index('.claude')
+
+    def test_target_lists_are_validated(self) -> None:
+        for target in ('claude,foo', 'claude,', ',codex', 'claude,,codex', 'codex cursor'):
+            with self.subTest(target=target):
+                destination = Path(self.temporary.name) / 'invalid-list'
+                result = subprocess.run(
+                    ['bash', str(ROOT / 'init.sh'), '--dest', str(destination),
+                     '--target', target], capture_output=True, text=True,
+                    timeout=10, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('--target must be', result.stderr)
+                self.assertFalse(destination.exists())
+
     def test_reinstall_is_idempotent(self) -> None:
-        self.install()
-        before = self.snapshot()
-        self.install()
-        self.assertEqual(self.snapshot(), before)
+        for target in ('both', 'all', 'codex'):
+            with self.subTest(target=target):
+                self.destination = Path(self.temporary.name) / f'idempotent-{target}'
+                self.install(target)
+                before = self.snapshot()
+                self.install(target)
+                self.assertEqual(self.snapshot(), before)
 
     def test_update_preserves_customizations_and_refreshes_owned_files(self) -> None:
         self.install()

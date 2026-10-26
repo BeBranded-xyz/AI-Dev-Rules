@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Bootstrap a project with this ruleset.
 #
-#   ./init.sh --dest ../my-project [--target claude|cursor|both] [--name "My Project"] [--check "pnpm check"] [--force]
+#   ./init.sh --dest ../my-project [--target claude|cursor|codex|both|all|<list>] [--name "My Project"] [--check "pnpm check"] [--force]
 #   ./init.sh --dest ../my-project --update
+#
+# --target accepts one agent, "both" (claude,cursor, the default), "all"
+# (claude,cursor,codex), or a comma-separated list such as "claude,codex".
 #
 # --update refreshes an existing project to the current ruleset. It overwrites
 # only files the ruleset owns (rules, hooks, skills, testing catalogue, changelog,
@@ -18,14 +21,17 @@
 #                  rules that are conditional AND have no globs go to <dest>/.claude/rules-on-demand/
 #                  copies claude/settings.json, hooks/, skills/ into <dest>/.claude/
 #                  writes <dest>/CLAUDE.md from templates/CLAUDE.md
-#   - Both:        copies PROJECT.md, TEST_PLAN.md, registries, .env.example, PR template, workflows,
+#   - Codex:       writes <dest>/AGENTS.md from templates/AGENTS.md with a generated index of the
+#                  rule files; reuses .claude/ rules and skills when Claude is a target, otherwise
+#                  installs the same converted rules and skills into <dest>/.agents/
+#   - Every target: copies PROJECT.md, TEST_PLAN.md, registries, .env.example, PR template, workflows,
 #                  renovate.json, docs/reference/testing-catalogue.md
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 dest=""; target="both"; name=""; check=""; force=0; update=0
 
-usage() { sed -n '2,15p' "$0"; exit 1; }
+usage() { sed -n '2,18p' "$0"; exit 1; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dest) dest="$2"; shift 2 ;;
@@ -39,7 +45,21 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -z "$dest" ]] && { echo "--dest is required" >&2; usage; }
-[[ "$target" =~ ^(claude|cursor|both)$ ]] || { echo "--target must be claude, cursor or both" >&2; exit 1; }
+case "$target" in
+  both) target_list="claude,cursor" ;;
+  all) target_list="claude,cursor,codex" ;;
+  *) target_list="$target" ;;
+esac
+targets=","
+IFS=',' read -r -a requested <<< "$target_list,"
+for t in "${requested[@]}"; do
+  [[ "$t" =~ ^(claude|cursor|codex)$ ]] || {
+    echo "--target must be claude, cursor, codex, both, all, or a comma-separated list of claude, cursor, codex" >&2; exit 1; }
+  targets+="$t,"
+done
+has() { [[ "$targets" == *",$1,"* ]]; }
+# Converted (.md) rules and skills live in .claude/ when Claude is a target; Codex reuses them.
+agents_root=".claude"; has claude || agents_root=".agents"
 mkdir -p "$dest"; dest="$(cd "$dest" && pwd)"
 [[ -z "$name" ]] && name="$(basename "$dest")"
 
@@ -118,19 +138,19 @@ for d in "${rule_dirs[@]}"; do
   for f in "$here/$d"/*.mdc; do
     [[ -e "$f" ]] || continue
     base="$(basename "$f" .mdc)"
-    if [[ "$target" != "claude" ]]; then
+    if has cursor; then
       put_owned "$f" "$dest/.cursor/rules/$d/$base.mdc"
     fi
-    if [[ "$target" != "cursor" ]]; then
+    if has claude || has codex; then
       tmp="$(mktemp)"
       kind="$(to_claude_rule "$f" "$tmp")"
       if [[ "$kind" == "ondemand" ]]; then
-        put_owned "$tmp" "$dest/.claude/rules-on-demand/$d/$base.md"
-        ondemand_list+=(".claude/rules-on-demand/$d/$base.md")
-        rm -f "$dest/.claude/rules/$d/$base.md"
+        put_owned "$tmp" "$dest/$agents_root/rules-on-demand/$d/$base.md"
+        ondemand_list+=("$agents_root/rules-on-demand/$d/$base.md")
+        rm -f "$dest/$agents_root/rules/$d/$base.md"
       else
-        put_owned "$tmp" "$dest/.claude/rules/$d/$base.md"
-        rm -f "$dest/.claude/rules-on-demand/$d/$base.md"
+        put_owned "$tmp" "$dest/$agents_root/rules/$d/$base.md"
+        rm -f "$dest/$agents_root/rules-on-demand/$d/$base.md"
       fi
       rm -f "$tmp"
     fi
@@ -138,12 +158,14 @@ for d in "${rule_dirs[@]}"; do
 done
 
 if [[ $update -eq 1 ]]; then
-  [[ "$target" != "claude" ]] && prune_rules "$dest/.cursor/rules" mdc
-  if [[ "$target" != "cursor" ]]; then prune_rules "$dest/.claude/rules" md; prune_rules "$dest/.claude/rules-on-demand" md; fi
+  if has cursor; then prune_rules "$dest/.cursor/rules" mdc; fi
+  if has claude || has codex; then
+    prune_rules "$dest/$agents_root/rules" md; prune_rules "$dest/$agents_root/rules-on-demand" md
+  fi
 fi
 
 # --- Claude Code harness -----------------------------------------------------
-if [[ "$target" != "cursor" ]]; then
+if has claude; then
   put "$here/claude/settings.json" "$dest/.claude/settings.json"
   if [[ $update -eq 1 ]] && ! cmp -s "$here/claude/settings.json" "$dest/.claude/settings.json"; then
     echo "note: .claude/settings.json differs from the ruleset version (kept yours). Diff with: diff $here/claude/settings.json $dest/.claude/settings.json"
@@ -171,6 +193,25 @@ else:
 open(path, "w").write(s)
 PY
   fi
+fi
+
+# --- Codex (AGENTS.md) -------------------------------------------------------
+if has codex; then
+  if ! has claude; then
+    for s in "$here"/claude/skills/*/; do
+      sname="$(basename "$s")"
+      put_owned "$s/SKILL.md" "$dest/.agents/skills/$sname/SKILL.md"
+    done
+  fi
+  if [[ ! -e "$dest/AGENTS.md" || $force -eq 1 ]]; then
+    put "$here/templates/AGENTS.md" "$dest/AGENTS.md"
+    subst "$dest/AGENTS.md"
+    sed -i.bak -e "s#{{RULES_ROOT}}#$agents_root#g" "$dest/AGENTS.md" && rm -f "$dest/AGENTS.md.bak"
+  else
+    skipped=$((skipped+1))
+  fi
+  # (Re)generate the rule index at the end of AGENTS.md; everything above it is project-owned.
+  python3 "$here/scripts/agents-index.py" "$dest" "$agents_root"
 fi
 
 # --- Shared project files ----------------------------------------------------
