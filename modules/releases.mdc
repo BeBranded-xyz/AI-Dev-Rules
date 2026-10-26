@@ -18,6 +18,8 @@ in `core/github-workflow.mdc`; pipelines and environments in
 `modules/infra.mdc`; migrations in `modules/database.mdc`. Deployment triggers
 and affected-unit selection follow `modules/deployments.mdc`. Versioning jobs
 must not independently redeploy the application or require redeploying all units.
+For published packages, `modules/library-publishing.mdc` replaces the canary,
+progressive delivery, and rollback sections.
 
 **This rule is the authority on `CHANGELOG.md`.** It supersedes any hand-written
 changelog format: `core/github-workflow.mdc` defers here, the changelog is
