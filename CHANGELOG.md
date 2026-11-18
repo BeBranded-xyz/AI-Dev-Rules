@@ -9,6 +9,24 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### New requirements
 
+- `core/security.mdc` adds an agent-led audit with Cloudflare's
+  `security-audit` skill (pinned commit): before major launches, before each
+  human penetration test, and on high-risk PRs. Reports stay out of git and
+  public issues; confirmed high or critical findings block the gate;
+  `needs_validation` findings become tracked issues.
+- Migration: install the skill at the pinned commit, add its output folder to
+  `.gitignore`, and record the last run in `PROJECT.md` section 10.
+- `auth` gains a password policy: 12 to 128 characters (64 always accepted),
+  any Unicode, no composition rules or forced rotation, no silent truncation,
+  paste and password managers allowed. One shared server-side check runs
+  `zxcvbn-ts` (score >= 3) with the brand terms and user data as inputs, then
+  the Pwned Passwords range API (k-anonymity, fail open to a bundled list).
+  Brand terms penalize predictable passwords without banning the substring.
+  Argon2id when the project hashes itself, rehash on login.
+- Migration: fill "Password policy terms" and "Password policy deviations" in
+  `PROJECT.md` section 8, route every password-setting flow through the shared
+  check, and on Supabase set `minimum_password_length = 12` and enable leaked
+  password protection.
 - New `library-publishing` module for projects that ship packages: public API
   report and type-level semver, allowlisted package contents, compatibility
   matrix with consumer tests on the packed tarball, trusted publishing with
