@@ -9,6 +9,16 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### New requirements
 
+- `core/dependencies.mdc` forbids unmaintained and low-reputation dependencies:
+  release within 12 months, commits within 6, not archived or deprecated, two
+  maintainers or an organization on critical paths; established choice with
+  real adoption (npm ≥ 100k weekly downloads or equivalent), ≥ 1 year stable,
+  OpenSSF Scorecard ≥ 6. Evidence goes in the PR. Exceptions are recorded in
+  `PROJECT.md`, never for unmaintained packages. Renovate flags packages
+  without a release in a year; flagged ones are replaced within 90 days.
+- Migration: run `init.sh --update` for the Renovate template, then review
+  current dependencies against the new criteria and file `DEBT.md` entries for
+  the ones that fail.
 - `core/security.mdc` adds an agent-led audit with Cloudflare's
   `security-audit` skill (pinned commit): before major launches, before each
   human penetration test, and on high-risk PRs. Reports stay out of git and

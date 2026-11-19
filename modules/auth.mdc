@@ -142,8 +142,10 @@ every flow that sets a password, runs in this order:
    Pass the brand terms from `PROJECT.md` and the user's data as
    `userInputs`; it already handles case changes and l33t substitutions
    (`a→@`, `o→0`, `e→3`, `i→1`, `s→$`). Reject below score 3 and return its
-   feedback. The original `dropbox/zxcvbn` is unmaintained; use a maintained
-   port in other languages (`zxcvbn-rs`, `zxcvbn-python`) with the same inputs.
+   feedback. The original `dropbox/zxcvbn` and the Python port are
+   unmaintained (`core/dependencies.mdc`); in Rust use the `zxcvbn` crate, and
+   in a language without a port that passes the dependency rules, run this
+   check in a small TypeScript service.
 3. **Breach check with Pwned Passwords**, k-anonymity range API only: send the
    first 5 hex characters of the SHA-1, compare suffixes locally, send the
    `Add-Padding: true` header. Never send the password or its full hash to any
