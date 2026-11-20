@@ -1,5 +1,5 @@
 ---
-description: Internationalization and localization — translation keys, ICU messages, locale files, dates and timezones, numbers and money, RTL, collation, translation workflow, SEO, and i18n testing. Apply when the project has more than one locale or serves users across timezones.
+description: Internationalization and localization — translation keys, ICU messages, locale files, dates and timezones, numbers and money, RTL, collation, translation workflow, SEO, and i18n testing. Required from day one in every project with user-facing text, even with a single locale.
 globs:
   - "**/locales/**"
   - "**/i18n/**"
@@ -11,12 +11,32 @@ alwaysApply: false
 
 ## When this applies
 
-Apply to every file matching the globs and whenever `PROJECT.md` declares more
-than one locale, currency, or user timezone. The default locale, the supported
-locale list, the fallback chain, the i18n library, and the translation
-management tool are project facts in `PROJECT.md`. Even a single-locale project
-follows the date, number, and money rules below; they cost nothing and prevent
-the bugs that appear the day a second locale is added.
+**Required in every project that shows text to a user** (web or mobile UI,
+emails, notifications, PDFs, user-facing error messages), **from the first
+commit, even when only one language is planned.** It is ticked in `PROJECT.md`
+section 9 at project creation; only a project with no user-facing text at all
+(internal library, pure API, infra) may leave it off, with the reason written
+there.
+
+Integrating i18n later means hunting literals across the whole codebase; doing
+it at the start costs one library and one locale file. Adding a language must
+be "add a locale file and translate", never a refactor.
+
+The default locale, the supported locale list, the fallback chain, the i18n
+library, and the translation management tool are project facts in `PROJECT.md`.
+
+### Day-one setup (single locale included)
+
+- The ICU-capable i18n library (Tooling below) installed and wired at the app
+  root, server and client, before the first screen or email is written.
+- One default-locale file, keys only in code: no literal user-facing string
+  from the first component on.
+- `<html lang>` and the locale resolved through the library, not hard-coded.
+- Dates, numbers, and money formatted through `Intl` (rules below).
+- The no-literal lint and missing-key check in the `check` command from the
+  start.
+- URL strategy for future locales decided and written in `PROJECT.md` (path
+  prefix or domain), even if only the default locale exists.
 
 ## Principles
 
@@ -189,6 +209,7 @@ return formatter.format(new Date(isoUtc));
 
 ## Checklist when touching i18n code
 
+- [ ] New project: i18n library, default locale file, and no-literal lint set up before the first user-facing text
 - [ ] No hardcoded user-facing string, including `alt`, `aria-label`, and errors
 - [ ] Keys follow `feature.component.purpose`; none built dynamically
 - [ ] Counts use ICU plural; gender/variants use ICU select; no concatenation

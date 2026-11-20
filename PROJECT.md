@@ -57,6 +57,9 @@ Last updated: {{YYYY-MM-DD}}
 - **Code, identifiers, comments**: {{English}}
 - **Commit messages**: {{English, conventional commits}}
 - **User-facing content (UI, emails)**: {{French}}
+- **Locales**: default {{fr-FR}}; supported {{fr-FR}}; planned {{en-GB, ...}};
+  fallback {{fr-FR}}; URL strategy {{path prefix /en/ | per-locale domain}}
+  (i18n is set up from day one, see `modules/i18n.mdc`)
 - **Internal docs**: {{French accepted}} — **Technical docs / READMEs**: {{English}}
 - **Tone**: {{technical and factual}}
 - **Emojis in code / commits / technical docs**: {{not allowed}}
@@ -188,7 +191,7 @@ A rule for a tech you don't use is ignored.
 - [ ] `frontend` — components, accessibility, Core Web Vitals, design tokens
 - [ ] `design-system` — shared components, semantic tokens, themes, catalogue, icons, enforcement (required for projects with a UI)
 - [ ] `data-fetching` — fast reads, safe optimistic updates, confirmed sensitive writes, one data layer
-- [ ] `i18n` — locales, dates/times, currencies, RTL
+- [ ] `i18n` — locales, dates/times, currencies, RTL (required from the first commit for any project with user-facing text, even single-locale)
 - [ ] `performance` — budgets, caching, load testing
 - [ ] `background-jobs` — crons, queues, workers
 - [ ] `observability` — error tracking, tracing, structured logging

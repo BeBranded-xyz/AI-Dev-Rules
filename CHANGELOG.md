@@ -9,6 +9,13 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### New requirements
 
+- `i18n` is required from the first commit in every project with user-facing
+  text, even single-locale: ICU library wired at the root, one default-locale
+  file, no literal strings, `Intl` formatting, no-literal lint and missing-key
+  check in `check`, URL strategy for future locales decided upfront.
+- Migration: new projects tick `i18n` at creation and fill the locales line in
+  `PROJECT.md` section 4. Existing projects with user-facing text tick it,
+  add a `DEBT.md` entry to extract remaining literals, and stop adding new ones.
 - `core/dependencies.mdc` forbids unmaintained and low-reputation dependencies:
   release within 12 months, commits within 6, not archived or deprecated, two
   maintainers or an organization on critical paths; established choice with
