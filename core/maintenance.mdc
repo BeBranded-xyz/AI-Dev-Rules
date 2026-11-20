@@ -44,7 +44,8 @@ Run in one session; record the result in `docs/maintenance/YYYY-MM.md` (or the
 location in `PROJECT.md`). The `/health-check` skill produces the automated
 half of this report.
 
-- [ ] Dependencies: audit clean, unused packages removed, majors planned
+- [ ] Dependencies: audit clean, unused packages removed, majors planned,
+      abandoned or low-reputation packages replaced or scheduled (`core/dependencies.mdc`)
 - [ ] Dead code: unused exports, orphan files, unreachable branches removed
 - [ ] Orphan TODOs: every `TODO`/`FIXME` has a linked open issue; expired
       `@deprecated` markers deleted

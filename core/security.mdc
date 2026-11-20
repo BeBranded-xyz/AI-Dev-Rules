@@ -80,10 +80,40 @@ testing"). Every project runs at the stated gates:
 - **Pre-production**: DAST (ZAP baseline or equivalent) against the deployed
   candidate, authentication suite, injection suite (SQL, NoSQL, command, XSS,
   SSRF, path traversal, template), webhook signature suite, rate-limit tests.
+- **Agent-led audit** with Cloudflare's `security-audit` skill
+  (https://github.com/cloudflare/security-audit-skill, MIT): before a major
+  launch, before each human penetration test, and on any PR that adds a trust
+  boundary or touches auth, payments, permissions, uploads, webhooks, or LLM
+  tool use. See "Agent-led security audit" below.
 - **Before a major launch and yearly**: human penetration test; findings
   become regression tests.
 - Any high or critical finding blocks the gate. Suppressions require a linked
   issue and an expiry date.
+
+### Agent-led security audit
+
+- **Install pinned**, never from a moving branch: clone the repository at a
+  reviewed commit (last reviewed: `c1c8a8c1471069fb0e188eeaff69b8e8db6564a8`)
+  into `.claude/skills/security-audit/` (or install it user-wide with
+  `npx skills add https://github.com/cloudflare/security-audit-skill --skill
+  security-audit --global`, then check the installed commit). Read the diff
+  before moving the pin; it is code and prompts that run with repository access.
+- **Scope the run**: the whole repo before a launch, otherwise the changed
+  trust boundary (`security audit ./src/auth`). Reruns are additive: keep the
+  previous `coverage-ledger.json` and `findings.json` so the next run targets
+  gaps and revalidates changed code.
+- **Outputs are sensitive**: `REPORT.md`, `FINDINGS-DETAIL.md`,
+  `NEEDS-VALIDATION.md`, and the JSON records describe exploitable flaws. Keep
+  them out of git (add the audit output folder to `.gitignore`) and out of
+  public issues; store them in the private tracker or a private advisory
+  (`modules/open-source.mdc` for public repositories).
+- **Triage by verdict**: `confirmed` high or critical blocks the gate like any
+  other scanner finding and is fixed with a regression test; `needs_validation`
+  becomes a tracked issue naming the unresolved fact, closed by a test or a
+  written rejection; `rejected` needs no action.
+- **It complements, never replaces**, SAST, DAST, the test suites, and the human
+  penetration test. Record the date, scope, and pinned commit of the last run in
+  `PROJECT.md` section 10.
 
 ## Privacy / data protection
 
@@ -112,3 +142,5 @@ testing"). Every project runs at the stated gates:
 - [ ] Sessions in HttpOnly cookies; abuse-prone endpoints rate-limited
 - [ ] No PII in logs or the error tracker; data minimization respected
 - [ ] Security suites (authz, injection, fuzz, SAST, dependency scan) cover the change
+- [ ] High-risk change (new trust boundary, auth, payments, permissions, uploads, webhooks,
+      LLM tools): `security-audit` skill run on its scope; confirmed findings fixed with tests

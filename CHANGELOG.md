@@ -9,6 +9,34 @@ version reference. Do not imply that uncommitted edits have a released version.
 
 ### New requirements
 
+- `core/dependencies.mdc` forbids unmaintained and low-reputation dependencies:
+  release within 12 months, commits within 6, not archived or deprecated, two
+  maintainers or an organization on critical paths; established choice with
+  real adoption (npm ≥ 100k weekly downloads or equivalent), ≥ 1 year stable,
+  OpenSSF Scorecard ≥ 6. Evidence goes in the PR. Exceptions are recorded in
+  `PROJECT.md`, never for unmaintained packages. Renovate flags packages
+  without a release in a year; flagged ones are replaced within 90 days.
+- Migration: run `init.sh --update` for the Renovate template, then review
+  current dependencies against the new criteria and file `DEBT.md` entries for
+  the ones that fail.
+- `core/security.mdc` adds an agent-led audit with Cloudflare's
+  `security-audit` skill (pinned commit): before major launches, before each
+  human penetration test, and on high-risk PRs. Reports stay out of git and
+  public issues; confirmed high or critical findings block the gate;
+  `needs_validation` findings become tracked issues.
+- Migration: install the skill at the pinned commit, add its output folder to
+  `.gitignore`, and record the last run in `PROJECT.md` section 10.
+- `auth` gains a password policy: 12 to 128 characters (64 always accepted),
+  any Unicode, no composition rules or forced rotation, no silent truncation,
+  paste and password managers allowed. One shared server-side check runs
+  `zxcvbn-ts` (score >= 3) with the brand terms and user data as inputs, then
+  the Pwned Passwords range API (k-anonymity, fail open to a bundled list).
+  Brand terms penalize predictable passwords without banning the substring.
+  Argon2id when the project hashes itself, rehash on login.
+- Migration: fill "Password policy terms" and "Password policy deviations" in
+  `PROJECT.md` section 8, route every password-setting flow through the shared
+  check, and on Supabase set `minimum_password_length = 12` and enable leaked
+  password protection.
 - New `library-publishing` module for projects that ship packages: public API
   report and type-level semver, allowlisted package contents, compatibility
   matrix with consumer tests on the packed tarball, trusted publishing with

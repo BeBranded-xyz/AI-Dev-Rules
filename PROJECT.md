@@ -149,6 +149,8 @@ Keep this in sync with the real structure — update in the same PR as a move.}}
 | {{Supabase project ref}} | {{...}} |
 | {{Region}} | {{e.g. eu-west (GDPR)}} |
 | {{External base / account IDs}} | {{...}} |
+| Password policy terms (if `auth`) | {{brand names, domain and variants, app/product names, acronyms, internal service names}} |
+| Password policy deviations (if `auth`) | {{e.g. provider caps at 72 bytes; client-side signup bypasses the custom check; none}} |
 
 ## 9. Active rules
 
@@ -214,6 +216,7 @@ tracked in `TEST_PLAN.md`; every category is required unless justified there.
 | `docs/DEBT.md` | Deliberate shortcuts with deadlines |
 | `docs/RUNBOOK.md` | Alerts, procedures, kill switches |
 | `docs/adr/` | Architecture decision records |
+| Security audits | {{last `security-audit` skill run: date, scope, pinned commit, private report location; last pentest date}} |
 | {{docs/<schema>.md}} | {{Data model}} |
 | {{...}} | {{...}} |
 

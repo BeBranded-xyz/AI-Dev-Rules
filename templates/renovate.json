@@ -18,6 +18,7 @@
     "prPriority": 10
   },
   "osvVulnerabilityAlerts": true,
+  "abandonmentThreshold": "1 year",
   "packageRules": [
     {
       "description": "Group minor and patch updates into one weekly PR",

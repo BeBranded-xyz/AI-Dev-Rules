@@ -89,10 +89,102 @@ Validate auth inputs with a schema (signup, login, profile, password reset).
 For conditional fields (e.g. a company id required only for business accounts),
 use a discriminated union so invalid combinations can't typecheck or submit.
 
+## Password policy
+
+Applies whenever the project accepts passwords (signup, password change, reset,
+admin-created accounts). It follows NIST SP 800-63B and OWASP ASVS: length and
+blocklists, not composition rules. The project's brand terms live in
+`PROJECT.md` (section 8, "Password policy terms").
+
+### Length and characters
+
+- **Minimum 12 characters, maximum 128**; at least 64 must always be accepted.
+  Count Unicode code points after NFKC normalization, not bytes, and normalize
+  the same way before hashing.
+- **Accept every character**: upper and lower case, digits, symbols, spaces,
+  accents, any Unicode. Never trim or alter what the user typed (beyond NFKC).
+- **No composition rules** (no mandatory uppercase, digit, or symbol) and **no
+  periodic forced rotation**; force a change only on evidence of compromise.
+- **Never truncate silently.** Too long is a validation error with a message.
+  Bcrypt-backed providers cap input at 72 bytes (Supabase Auth rejects longer
+  passwords): record that cap in `PROJECT.md` as the effective maximum, and do
+  not hand-roll a pre-hash to get around it.
+- **Paste and password managers allowed**: no `onpaste` blocking, correct
+  `autocomplete="new-password"` / `"current-password"`, a show-password toggle,
+  no maximum below the policy in the HTML `maxlength`.
+
+### What is rejected
+
+| Category | Examples |
+|---|---|
+| Known breached passwords | anything in Pwned Passwords |
+| Common passwords | `password123`, `admin123456` |
+| Dictionary words with predictable edits (multilingual, French included) | `Bonjour12345`, `Welcome2026!` |
+| Keyboard and alphabetic sequences | `azerty123456`, `qwerty123456`, `abcdefghijkl` |
+| Repetitions | `aaaaaaaaaaaa`, `123123123123` |
+| Obvious substitutions | `P@ssw0rd2026!` |
+| Brand, site, domain, or app name | `BeBranded2026!`, `B3Br@nded123`, `bebranded1234`, `examplecom123` |
+| User's own data | email local part, username, first or last name, plus a year |
+
+**Reject predictable passwords, not substrings.** A long, strong passphrase
+that contains a dictionary word, a sequence, or the brand name is accepted. So
+brand terms and user data are fed to the strength estimator as penalized
+inputs; never implement them as a plain "contains" ban.
+
+### How it is checked
+
+One server-side `checkPassword(password, { userInputs })` function, shared by
+every flow that sets a password, runs in this order:
+
+1. **Length** (after normalization).
+2. **Strength estimate with `zxcvbn-ts`** (`@zxcvbn-ts/core` with the common,
+   English and French language packages, plus any other user-facing locale).
+   Pass the brand terms from `PROJECT.md` and the user's data as
+   `userInputs`; it already handles case changes and l33t substitutions
+   (`a→@`, `o→0`, `e→3`, `i→1`, `s→$`). Reject below score 3 and return its
+   feedback. The original `dropbox/zxcvbn` and the Python port are
+   unmaintained (`core/dependencies.mdc`); in Rust use the `zxcvbn` crate, and
+   in a language without a port that passes the dependency rules, run this
+   check in a small TypeScript service.
+3. **Breach check with Pwned Passwords**, k-anonymity range API only: send the
+   first 5 hex characters of the SHA-1, compare suffixes locally, send the
+   `Add-Padding: true` header. Never send the password or its full hash to any
+   third party. Short timeout (2 s); on outage, fail open for this check only,
+   fall back to a bundled list of the top common passwords (e.g. from
+   SecLists), and record a metric. This follows "never block signup on a third
+   party" above; the length and strength checks always run.
+
+- **Server-side is authoritative.** The client may run the same estimator for
+  live feedback (lazy-load it; it is large), but the server re-checks.
+- **Brand terms are built, not hard-coded in logic**: commercial name, domain
+  and its variants (`example.com`, `examplecom`, `example`), app and product
+  names, acronyms, relevant internal service names. They are data from
+  `PROJECT.md`, loaded into the dictionary at startup.
+- **Messages are specific and kind**: say why (too short, found in a breach,
+  too close to the site name) and suggest a passphrase. Never echo the password.
+- **Hosted auth providers**: enable the provider's own length and breach checks
+  too (Supabase: `minimum_password_length = 12`, empty
+  `password_requirements`, leaked password protection on). Provider endpoints
+  called directly from a client bypass the custom check: route every
+  password-setting flow through the server (admin API or server action) when
+  the full policy must be guaranteed, and document any gap in `PROJECT.md`.
+
+### Storage
+
+- **Argon2id** when the project hashes passwords itself: OWASP minimum
+  (m=19 MiB, t=2, p=1) or stronger, tuned to ~250-500 ms on production
+  hardware, a per-password random salt, parameters stored in the encoded hash.
+  Use the library's encoded format and constant-time verify.
+- **Rehash on login** when stored parameters are below the current ones.
+- When the auth library or provider owns hashing (bcrypt, scrypt), keep its
+  vetted algorithm; do not wrap it in a custom scheme.
+- Passwords never reach logs, error trackers, analytics, or third parties in
+  clear form (see Security below).
+
 ## Security
 
 - HttpOnly cookies for tokens; never `localStorage`. HTTPS-only in production.
-- Enforce a sane minimum password length both in the schema and in the auth config.
+- Enforce the password policy above in the shared server check and in the auth config.
 - Rate-limit signup and login (e.g. a few attempts per IP per window).
 - Require email verification before sensitive actions if the project needs it.
 - Never log passwords, tokens, or sessions; scrub before sending anywhere.
@@ -118,6 +210,19 @@ Auth is a maximal-testing area (`testing.mdc`, row "Auth / session / permissions
   signup and on login.
 - **Cross-runtime tokens**: expired, wrong signature, wrong audience, replayed.
 - **Cookies**: HttpOnly, Secure, SameSite asserted in an integration test.
+- **Password policy table tests**: 11 chars rejected, 12 accepted; 128
+  accepted, 129 rejected with a message (never truncated); emoji, accents and
+  spaces accepted; one rejected example per category of the table above,
+  including brand variants (`BeBranded2026!`, `B3Br@nded123`, the domain without
+  its dot) and user data; a long random passphrase containing the brand name or
+  a dictionary word accepted; every flow (signup, change, reset, admin create)
+  goes through the same check.
+- **Breach check**: the request carries only a 5-character SHA-1 prefix and the
+  padding header (asserted on the mocked HTTP call); a matched suffix rejects;
+  timeout and 5xx fall back to the bundled list without blocking signup.
+- **Hashing**: stored value is an Argon2id encoded hash with the configured
+  parameters (or the provider's format); a weaker stored hash is upgraded on
+  next login; no password appears in captured logs or error events.
 - **Schema fuzzing** of every auth input; only validation errors result.
 - **E2E**: the full login, signup, reset, and logout journeys on desktop and
   mobile viewports; no PII in logs asserted with a log capture.
@@ -130,5 +235,10 @@ Auth is a maximal-testing area (`testing.mdc`, row "Auth / session / permissions
 - [ ] Anonymous state merged on signup AND login
 - [ ] Inputs validated with a schema
 - [ ] Rate limiting in place
+- [ ] Every password-setting flow calls the shared server check (length 12-128,
+      zxcvbn-ts score >= 3 with brand terms and user data, Pwned Passwords range API)
+- [ ] No composition rules, no silent truncation, paste and password managers allowed
+- [ ] Brand terms in `PROJECT.md` are current; provider-side length and breach checks on
+- [ ] Argon2id (or the provider's vetted hash), rehash on login when parameters rise
 - [ ] `.env.example` updated for new variables
 - [ ] Tests cover happy path AND failure paths

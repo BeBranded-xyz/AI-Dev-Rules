@@ -125,6 +125,13 @@ src/
 - **Custom claims through the custom access token hook** (Postgres function
   registered in `config.toml` `[auth.hook.custom_access_token]`); read them from
   `auth.jwt()` in RLS policies. Never put PII in claims.
+- **Password policy** (`modules/auth.mdc`): `minimum_password_length = 12`,
+  `password_requirements = ""` in `config.toml`, leaked password protection
+  enabled on hosted projects (Pro plan and above). Supabase caps passwords at
+  72 characters and cannot run the zxcvbn-ts and brand-term check; run it in a
+  server action or Edge Function and create or update users through the admin
+  API when the full policy must hold, since public `signUp`/`updateUser` calls
+  bypass it.
 - **Email templates versioned in `supabase/templates/`** and referenced in
   `config.toml`; use the send-email hook to route through the project's email
   provider (see `modules/auth.mdc`).
@@ -210,6 +217,7 @@ and `supabase/.env`. Local Studio and Inbucket (emails) replace the dashboard.
 - [ ] Advisors report no security findings; performance findings triaged
 - [ ] Correct client for the context; admin client use documented and server-only
 - [ ] Server code uses `auth.getUser()`; session refreshed in the proxy
+- [ ] Auth config: minimum length 12, no composition rules, leaked password protection on
 - [ ] Edge Function: thin entry, validated input, CORS, `verify_jwt` decision recorded, README
 - [ ] Secrets set through `supabase secrets set`; `.env.example` updated
 - [ ] Storage: private bucket, path policy, signed URLs, size and MIME limits

@@ -17,6 +17,9 @@ dependencies is in `core/maintenance.mdc`.
 
 - **Every dependency is a liability** with a maintenance cost, an attack
   surface, and a license. The default answer is no.
+- **Never use an unmaintained or low-reputation dependency.** No exception for
+  "small", "just a dev tool", or "it works today". See "Maintenance and
+  reputation" below.
 - **Reproducible installs**: same lockfile, same bytes, everywhere.
 - **Updates are continuous and automated**; a big-bang upgrade is a failure of
   process.
@@ -34,18 +37,64 @@ exists, behind the typed wrapper described in `integrations.mdc`.
 
 ### Before adding a dependency
 
-Answer all of these in the PR description; a "no" on any of the first four
+Answer all of these in the PR description; a "no" on any of the first five
 blocks the addition.
 
 | Criterion | Requirement |
 |---|---|
-| Maintained | Release or commit in the last 12 months; issues answered; more than one maintainer for anything on a critical path |
+| Maintained | Meets every maintenance criterion in "Maintenance and reputation" below |
+| Reputation | Meets every reputation criterion in "Maintenance and reputation" below |
 | License | On the allowlist of `templates/scripts/check-licenses.mjs` (MIT, ISC, BSD-2/3-Clause, Apache-2.0, 0BSD, CC0-1.0, Unlicense, MPL-2.0, Python-2.0, BlueOak-1.0.0, CC-BY-4.0). Anything else (GPL, LGPL, AGPL, SSPL, BUSL, commercial, unlicensed) needs an exception in `PROJECT.md` |
 | Security history | No unresolved advisories; past advisories fixed promptly |
 | Could we write it | If the needed subset is under 100 lines, write it and test it instead |
 | Size | Bundle or binary impact measured for client-side code; no package that pulls a framework for one helper |
 | Transitive count | Total new packages reported; more than 20 needs a justification |
 | Alternatives | The standard library and already-installed packages checked first |
+
+### Maintenance and reputation
+
+A dependency is added only if it passes **every** line below, checked on the
+registry, the source repository, and [deps.dev](https://deps.dev) (or
+[Socket](https://socket.dev)) on the day of the PR. Paste the evidence (links,
+dates, numbers) in the PR description.
+
+**Maintained**
+- A release in the last 12 months, and commits in the last 6 months.
+- Repository not archived, package not marked deprecated, no "looking for a
+  maintainer" or "no longer maintained" notice in the README.
+- Issues and pull requests get maintainer responses; security advisories are
+  fixed within weeks, not left open.
+- At least two active maintainers, or a company or foundation behind it, for
+  anything on a critical path (auth, payments, crypto, data access, build).
+- Supports the runtime versions the project uses (current LTS), not only EOL ones.
+
+**Reputation**
+- The established choice for its job in its ecosystem: among the most used
+  options, recommended by the framework or platform docs, or published by the
+  vendor itself. An obscure alternative to a well-known package is rejected.
+- Real adoption: npm ≥ 100,000 weekly downloads, PyPI ≥ 100,000 monthly
+  downloads, crates.io ≥ 100,000 recent downloads, Go ≥ 500 importers on
+  pkg.go.dev, or the equivalent in other registries. Stars alone do not count.
+- At least one year since the first stable release (≥ 1.0 or the ecosystem's
+  stable marker); no recent ownership transfer to an unknown account.
+- OpenSSF Scorecard ≥ 6 when available (shown on deps.dev; Renovate displays it
+  through `security:openssf-scorecard`), no malware or typosquat flag on
+  Socket or the registry, and a source repository that matches the published
+  package.
+
+**Exceptions** are rare and written down: official first-party SDKs from a
+vendor the project already uses pass the adoption threshold automatically;
+anything else below a threshold needs a `PROJECT.md` entry (package, failed
+criterion, reason, owner, review date within 6 months) approved in review. An
+unmaintained package never gets an exception: fork it into `vendor/` with a
+`DEBT.md` entry, write the subset in-house, or pick another package.
+
+**Existing dependencies are re-checked**: Renovate flags packages without a
+release in a year (`abandonmentThreshold` in `templates/renovate.json`), and
+the monthly ritual (`core/maintenance.mdc`) reviews them. A dependency that
+becomes archived, deprecated, unmaintained, or flagged is replaced within 90
+days (immediately if it has an unfixed advisory), tracked as a `DEBT.md`
+entry until then.
 
 - **One package per job**: never two libraries doing the same thing (two HTTP
   clients, two date libraries) without a migration plan and a `DEBT.md` entry.
@@ -193,6 +242,8 @@ and unused-dependency checks alongside typecheck, lint, and tests.
   past their expiry date fail the pipeline.
 - **License test**: a non-allowlisted license fails the pipeline.
 - **Unused dependency test**: the monthly job reports and fails on unused packages.
+- **Abandonment check**: Renovate's abandoned-package list is empty, or every
+  entry has a replacement issue and a `DEBT.md` entry with a date.
 - **Upgrade tests**: a dependency update PR runs the full suite (unit,
   integration, E2E, contract) exactly like a feature PR; automerge requires
   all of them.
@@ -204,6 +255,8 @@ and unused-dependency checks alongside typecheck, lint, and tests.
 ## Checklist when touching dependency code
 
 - [ ] Addition justified against the criteria table in the PR description
+- [ ] Maintenance and reputation evidence (last release, maintainers, downloads, Scorecard) pasted in the PR
+- [ ] No archived, deprecated, unmaintained, or low-adoption package; any exception recorded in `PROJECT.md`
 - [ ] License on the allowlist or an exception recorded in `PROJECT.md`
 - [ ] No code copied or translated from an incompatible license; clean-room reimplementation documented
 - [ ] Installed version checked and the real API read before writing code
